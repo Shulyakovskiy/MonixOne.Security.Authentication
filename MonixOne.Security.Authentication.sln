@@ -1,0 +1,44 @@
+
+Microsoft Visual Studio Solution File, Format Version 12.00
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{2AA1B373-7EE9-45B5-9FA7-CF4F7E83BBAC}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{97F4D4A5-B84D-4C5D-93DA-B91275F37ED7}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MonixOne.Security.Authentication", "src\MonixOne.Security.Authentication\MonixOne.Security.Authentication.csproj", "{0916F466-6178-4F77-B218-D39961DBFF1B}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MonixOne.Security.Authentication.Tests", "tests\MonixOne.Security.Authentication.Tests\MonixOne.Security.Authentication.Tests.csproj", "{815EA102-F955-43EF-A220-635B22A56D96}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{FA7036F7-BECE-4E55-8671-48BC44905856}"
+	ProjectSection(SolutionItems) = preProject
+		.editorconfig = .editorconfig
+		.gitattributes = .gitattributes
+		.gitignore = .gitignore
+		Directory.Build.props = Directory.Build.props
+		Directory.Packages.props = Directory.Packages.props
+		global.json = global.json
+		LICENSE = LICENSE
+		README.md = README.md
+		.github\workflows\ci.yml = .github\workflows\ci.yml
+		.github\workflows\publish.yml = .github\workflows\publish.yml
+	EndProjectSection
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{0916F466-6178-4F77-B218-D39961DBFF1B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{0916F466-6178-4F77-B218-D39961DBFF1B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{0916F466-6178-4F77-B218-D39961DBFF1B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{0916F466-6178-4F77-B218-D39961DBFF1B}.Release|Any CPU.Build.0 = Release|Any CPU
+		{815EA102-F955-43EF-A220-635B22A56D96}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{815EA102-F955-43EF-A220-635B22A56D96}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{815EA102-F955-43EF-A220-635B22A56D96}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{815EA102-F955-43EF-A220-635B22A56D96}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{0916F466-6178-4F77-B218-D39961DBFF1B} = {2AA1B373-7EE9-45B5-9FA7-CF4F7E83BBAC}
+		{815EA102-F955-43EF-A220-635B22A56D96} = {97F4D4A5-B84D-4C5D-93DA-B91275F37ED7}
+	EndGlobalSection
+EndGlobal
