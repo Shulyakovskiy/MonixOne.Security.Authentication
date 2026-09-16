@@ -85,16 +85,16 @@ using MonixOne.Security.Authentication;
 app.MapGet("/api/v1/profile", (IIdentityContext identity) =>
 {
     var userId = identity.UserId;
-    var roles = identity.Roles;
-    var scopes = identity.Scopes;
+    var roles = identity.GetRoles();
+    var scopes = identity.GetScopes();
 
     return Results.Ok(new { userId, roles, scopes });
 }).RequireAuthorization();
 ```
 
-`UserId` — точное непустое значение claim `sub`, поэтому библиотека не предполагает, что идентификатор обязательно имеет формат `Guid`. `Roles` собираются из повторяющихся claims `role`, а `Scopes` — из повторяющихся или разделённых пробелами claims `scope`; значения в каждой коллекции уникальны.
+`UserId` — точное непустое значение claim `sub`, поэтому библиотека не предполагает, что идентификатор обязательно имеет формат `Guid`. `GetRoles()` перечисляет повторяющиеся claims `role`, а `GetScopes()` — повторяющиеся или разделённые пробелами claims `scope`; значения в каждой последовательности уникальны и не копируются при вызове метода.
 
-Если access token отсутствует, не прошёл authentication или код выполняется вне HTTP-запроса, `UserId` равен `null`, а `Roles` и `Scopes` пусты. Это не заменяет endpoint authorization: доступ по ролям и scopes по-прежнему должен защищаться policy либо доменной проверкой.
+Если access token отсутствует, не прошёл authentication или код выполняется вне HTTP-запроса, `UserId` равен `null`, а `GetRoles()` и `GetScopes()` возвращают пустую последовательность. Это не заменяет endpoint authorization: доступ по ролям и scopes по-прежнему должен защищаться policy либо доменной проверкой.
 
 Если сервис настраивает authentication самостоятельно и не вызывает `AddPlatformAuthentication`, зарегистрируйте reader отдельно:
 

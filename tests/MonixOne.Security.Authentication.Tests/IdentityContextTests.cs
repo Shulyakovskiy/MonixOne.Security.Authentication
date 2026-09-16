@@ -20,8 +20,8 @@ public sealed class IdentityContextTests
             new Claim(OAuthTokenDefaults.ScopeClaim, "mobile-app.full_access openid"));
 
         request.UserId.ShouldBe("01a0a3b9-952e-79eb-8e98-02699a0566e9");
-        request.Roles.ShouldBe(["Admin", "Manager"]);
-        request.Scopes.ShouldBe(
+        request.GetRoles().ShouldBe(["Admin", "Manager"]);
+        request.GetScopes().ShouldBe(
         [
             "openid",
             "offline_access",
@@ -36,8 +36,8 @@ public sealed class IdentityContextTests
         var request = new IdentityContext(new HttpContextAccessor());
 
         request.UserId.ShouldBeNull();
-        request.Roles.ShouldBeEmpty();
-        request.Scopes.ShouldBeEmpty();
+        request.GetRoles().ShouldBeEmpty();
+        request.GetScopes().ShouldBeEmpty();
     }
 
     [Fact]
@@ -50,8 +50,8 @@ public sealed class IdentityContextTests
             new Claim(OAuthTokenDefaults.ScopeClaim, "location-service.full_access"));
 
         request.UserId.ShouldBeNull();
-        request.Roles.ShouldBeEmpty();
-        request.Scopes.ShouldBeEmpty();
+        request.GetRoles().ShouldBeEmpty();
+        request.GetScopes().ShouldBeEmpty();
     }
 
     private static IdentityContext CreateRequest(bool isAuthenticated, params Claim[] claims)

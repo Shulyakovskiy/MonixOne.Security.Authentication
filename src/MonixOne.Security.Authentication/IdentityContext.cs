@@ -29,26 +29,24 @@ public sealed class IdentityContext : IIdentityContext
     }
 
     /// <inheritdoc />
-    public IReadOnlyCollection<string> Roles => GetClaimValues(OAuthTokenDefaults.RoleClaim);
+    public IEnumerable<string> GetRoles() => GetClaimValues(OAuthTokenDefaults.RoleClaim);
 
     /// <inheritdoc />
-    public IReadOnlyCollection<string> Scopes => GetAuthenticatedUser() is { } user
+    public IEnumerable<string> GetScopes() => GetAuthenticatedUser() is { } user
         ? user
             .FindAll(OAuthTokenDefaults.ScopeClaim)
             .SelectMany(claim => claim.Value.Split(' ', StringSplitOptions.RemoveEmptyEntries))
             .Distinct(StringComparer.Ordinal)
-            .ToArray()
-        : Array.Empty<string>();
+        : Enumerable.Empty<string>();
 
-    private IReadOnlyCollection<string> GetClaimValues(string claimType) =>
+    private IEnumerable<string> GetClaimValues(string claimType) =>
         GetAuthenticatedUser() is { } user
             ? user
                 .FindAll(claimType)
                 .Select(claim => claim.Value)
                 .Where(value => !string.IsNullOrWhiteSpace(value))
                 .Distinct(StringComparer.Ordinal)
-                .ToArray()
-            : Array.Empty<string>();
+            : Enumerable.Empty<string>();
 
     private System.Security.Claims.ClaimsPrincipal? GetAuthenticatedUser()
     {

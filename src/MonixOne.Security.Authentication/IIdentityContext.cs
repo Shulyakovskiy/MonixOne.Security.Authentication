@@ -11,12 +11,12 @@ public interface IIdentityContext
     string? UserId { get; }
 
     /// <summary>
-    /// Возвращает уникальные значения claims <c>role</c> или пустую коллекцию, если текущий запрос не аутентифицирован.
+    /// Перечисляет уникальные значения claims <c>role</c> или не возвращает значений, если текущий запрос не аутентифицирован.
     /// </summary>
-    IReadOnlyCollection<string> Roles { get; }
+    IEnumerable<string> GetRoles();
 
     /// <summary>
-    /// Возвращает уникальные OAuth scopes из claims <c>scope</c> или пустую коллекцию, если текущий запрос не аутентифицирован.
+    /// Перечисляет уникальные OAuth scopes из claims <c>scope</c> или не возвращает значений, если текущий запрос не аутентифицирован.
     /// </summary>
-    IReadOnlyCollection<string> Scopes { get; }
+    IEnumerable<string> GetScopes();
 }
