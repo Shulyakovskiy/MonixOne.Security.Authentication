@@ -14,4 +14,14 @@ public static class OAuthTokenDefaults
     /// Имя claim, содержащего выданные OAuth scopes.
     /// </summary>
     public const string ScopeClaim = "scope";
+
+    /// <summary>
+    /// Имя claim, содержащего неизменяемый идентификатор субъекта access token.
+    /// </summary>
+    public const string SubjectClaim = "sub";
+
+    /// <summary>
+    /// Имя claim, содержащего роль пользователя.
+    /// </summary>
+    public const string RoleClaim = "role";
 }
