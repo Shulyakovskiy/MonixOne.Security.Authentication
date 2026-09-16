@@ -31,6 +31,7 @@ public static class PlatformAuthenticationServiceCollectionExtensions
             .Get<PlatformAuthenticationOptions>() ?? new PlatformAuthenticationOptions();
         ValidateOrThrow(options, environment);
 
+        services.AddIdentityContext();
         services.AddSingleton(Options.Create(options));
         services
             .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)

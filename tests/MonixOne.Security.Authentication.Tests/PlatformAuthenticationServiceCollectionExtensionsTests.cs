@@ -93,6 +93,28 @@ public sealed class PlatformAuthenticationServiceCollectionExtensionsTests
     }
 
     /// <summary>
+    /// Проверяет автоматическую регистрацию контекста пользователя вместе с JWT validation.
+    /// </summary>
+    [Fact]
+    public void AddPlatformAuthentication_RegistersIdentityContextContract()
+    {
+        // Arrange
+        var configuration = CreateConfiguration();
+        var services = new ServiceCollection();
+
+        // Act
+        services.AddPlatformAuthentication(configuration, new TestHostEnvironment("Production"));
+        using var provider = services.BuildServiceProvider();
+        using var scope = provider.CreateScope();
+
+        // Assert
+        var contract = scope.ServiceProvider.GetRequiredService<IIdentityContext>();
+        var implementation = scope.ServiceProvider.GetRequiredService<IdentityContext>();
+
+        contract.ShouldBeSameAs(implementation);
+    }
+
+    /// <summary>
     /// Проверяет ограничение максимального clock skew пятью минутами.
     /// </summary>
     [Theory]

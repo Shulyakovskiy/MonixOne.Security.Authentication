@@ -75,6 +75,33 @@ Policies(OAuthAuthorizationPolicies.ForScope("location.read"));
 
 Health endpoints должны явно оставаться анонимными. Проверки владения ресурсом, ролей и других доменных правил выполняются после JWT/scope validation внутри конечного сервиса.
 
+## Данные пользователя в обработчиках
+
+`AddPlatformAuthentication` автоматически регистрирует scoped `IdentityContext` и его контракт `IIdentityContext`. В endpoint, handler или application service зависите от контракта:
+
+```csharp
+using MonixOne.Security.Authentication;
+
+app.MapGet("/api/v1/profile", (IIdentityContext identity) =>
+{
+    var userId = identity.UserId;
+    var roles = identity.GetRoles();
+    var scopes = identity.GetScopes();
+
+    return Results.Ok(new { userId, roles, scopes });
+}).RequireAuthorization();
+```
+
+`UserId` — точное непустое значение claim `sub`, поэтому библиотека не предполагает, что идентификатор обязательно имеет формат `Guid`. `GetRoles()` перечисляет повторяющиеся claims `role`, а `GetScopes()` — повторяющиеся или разделённые пробелами claims `scope`; значения в каждой последовательности уникальны и не копируются при вызове метода.
+
+Если access token отсутствует, не прошёл authentication или код выполняется вне HTTP-запроса, `UserId` равен `null`, а `GetRoles()` и `GetScopes()` возвращают пустую последовательность. Это не заменяет endpoint authorization: доступ по ролям и scopes по-прежнему должен защищаться policy либо доменной проверкой.
+
+Если сервис настраивает authentication самостоятельно и не вызывает `AddPlatformAuthentication`, зарегистрируйте reader отдельно:
+
+```csharp
+builder.Services.AddIdentityContext();
+```
+
 ## Публикация
 
 Версия пакета задаётся свойством `Version` в `MonixOne.Security.Authentication.csproj`.
