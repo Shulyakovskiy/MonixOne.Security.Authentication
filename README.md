@@ -11,7 +11,9 @@ Reusable JWT Bearer authentication и OAuth scope authorization для ASP.NET C
 - JOSE type `at+jwt`;
 - требуемый OAuth scope.
 
-Она не выпускает tokens, не получает client credentials tokens и не заменяет domain authorization конечного сервиса.
+Она не выпускает tokens и не заменяет domain authorization конечного сервиса. Опциональное
+расширение `AddServiceClients` получает client credentials tokens только для явно
+зарегистрированных исходящих HTTP-контрактов.
 
 ## Подключение
 
@@ -101,6 +103,55 @@ app.MapGet("/api/v1/profile", (IIdentityContext identity) =>
 ```csharp
 builder.Services.AddIdentityContext();
 ```
+
+## Service-to-service HTTP-клиенты
+
+`AddServiceClients` связывает Refit-контракты с настройками из `appsettings` и добавляет
+client credentials handler с кэшированием access token. В первом аргументе передаётся секция,
+содержащая `ServiceClients` (например, `Infrastructure`), во втором — секция `Identity`.
+
+Если `ServiceClients` отсутствует или `Services` пуст, метод ничего не регистрирует — в том
+числе не требует `Identity:Authority`, `Identity:ClientId` и `Identity:ClientSecret`. Контракт,
+чья группа отсутствует в `Services`, также пропускается. Это позволяет одному образу включать
+клиенты только в нужных окружениях.
+
+```json
+{
+  "Infrastructure": {
+    "ServiceClients": {
+      "Services": [
+        {
+          "Group": "profile",
+          "BaseAddress": "https://profile.internal",
+          "Scopes": ["profile-service.intra_read"]
+        }
+      ]
+    }
+  },
+  "Identity": {
+    "Authority": "https://identity.internal",
+    "ClientId": "location-service",
+    "ClientSecret": "stored-outside-appsettings"
+  }
+}
+```
+
+Контракты принадлежат приложению, поэтому оно явно сопоставляет их с группами:
+
+```csharp
+builder.Services.AddServiceClients(
+    builder.Configuration.GetRequiredSection("Infrastructure"),
+    builder.Configuration.GetRequiredSection("Identity"),
+    registrar =>
+    {
+        // Регистрация контракта
+        registrar.Add<IProfileService>(ProfileServiceGroup.Name);
+    });
+```
+
+Для каждого сервиса обязательны абсолютный HTTP(S) `BaseAddress`, уникальный `Group` и хотя бы
+один `Scope`. Если `Resilience` не задан, применяется стандартный resilience pipeline .NET;
+его можно настроить в `ServiceClients:Resilience`.
 
 ## Публикация
 
