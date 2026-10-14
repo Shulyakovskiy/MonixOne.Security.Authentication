@@ -20,6 +20,9 @@ public sealed class IdentityContext : IIdentityContext
     }
 
     /// <inheritdoc />
+    public bool IsAuthenticated => GetAuthenticatedUser() is not null;
+
+    /// <inheritdoc />
     public string? UserId
     {
         get
