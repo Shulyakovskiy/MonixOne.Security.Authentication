@@ -6,6 +6,12 @@ namespace MonixOne.Security.Authentication;
 public interface IIdentityContext
 {
     /// <summary>
+    /// Возвращает <see langword="true"/>, если пользователь текущего HTTP-запроса аутентифицирован.
+    /// Вне HTTP-запроса возвращает <see langword="false"/>.
+    /// </summary>
+    bool IsAuthenticated { get; }
+
+    /// <summary>
     /// Возвращает значение claim <c>sub</c> или <see langword="null"/>, если текущий запрос не аутентифицирован.
     /// </summary>
     string? UserId { get; }

@@ -20,6 +20,7 @@ public sealed class IdentityContextTests
             new Claim(OAuthTokenDefaults.ScopeClaim, "openid offline_access location-service.full_access"),
             new Claim(OAuthTokenDefaults.ScopeClaim, "mobile-app.full_access openid"));
 
+        request.IsAuthenticated.ShouldBeTrue();
         request.UserId.ShouldBe("01a0a3b9-952e-79eb-8e98-02699a0566e9");
         request.ExternalUserId.ShouldBe("01a0a3b9-952e-79eb-8e98-02699a0566e9");
         request.GetRoles().ShouldBe(["Admin", "Manager"]);
@@ -33,10 +34,23 @@ public sealed class IdentityContextTests
     }
 
     [Fact]
+    public void AuthenticatedUserWithoutClaims_IsAuthenticatedWithEmptyValues()
+    {
+        var request = CreateRequest(isAuthenticated: true);
+
+        request.IsAuthenticated.ShouldBeTrue();
+        request.UserId.ShouldBeNull();
+        request.ExternalUserId.ShouldBeNull();
+        request.GetRoles().ShouldBeEmpty();
+        request.GetScopes().ShouldBeEmpty();
+    }
+
+    [Fact]
     public void NoHttpContext_ReturnsEmptyValues()
     {
         var request = new IdentityContext(new HttpContextAccessor());
 
+        request.IsAuthenticated.ShouldBeFalse();
         request.UserId.ShouldBeNull();
         request.ExternalUserId.ShouldBeNull();
         request.GetRoles().ShouldBeEmpty();
@@ -52,13 +66,14 @@ public sealed class IdentityContextTests
             new Claim(OAuthTokenDefaults.RoleClaim, "Admin"),
             new Claim(OAuthTokenDefaults.ScopeClaim, "location-service.full_access"));
 
+        request.IsAuthenticated.ShouldBeFalse();
         request.UserId.ShouldBeNull();
         request.ExternalUserId.ShouldBeNull();
         request.GetRoles().ShouldBeEmpty();
         request.GetScopes().ShouldBeEmpty();
     }
 
-    private static IdentityContext CreateRequest(bool isAuthenticated, params Claim[] claims)
+    private static IIdentityContext CreateRequest(bool isAuthenticated, params Claim[] claims)
     {
         var identity = new ClaimsIdentity(
             claims,
