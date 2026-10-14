@@ -11,6 +11,11 @@ public interface IIdentityContext
     string? UserId { get; }
 
     /// <summary>
+    /// Возвращает значение claim <c>sub-ext</c> или <see langword="null"/>, если текущий запрос не аутентифицирован.
+    /// </summary>
+    string? ExternalUserId { get; }
+
+    /// <summary>
     /// Перечисляет уникальные значения claims <c>role</c> или не возвращает значений, если текущий запрос не аутентифицирован.
     /// </summary>
     IEnumerable<string> GetRoles();

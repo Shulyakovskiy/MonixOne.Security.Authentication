@@ -13,6 +13,7 @@ public sealed class IdentityContextTests
         var request = CreateRequest(
             isAuthenticated: true,
             new Claim(OAuthTokenDefaults.SubjectClaim, "01a0a3b9-952e-79eb-8e98-02699a0566e9"),
+            new Claim(OAuthTokenDefaults.SubjectExternalClaim, "01a0a3b9-952e-79eb-8e98-02699a0566e9"),
             new Claim(OAuthTokenDefaults.RoleClaim, "Admin"),
             new Claim(OAuthTokenDefaults.RoleClaim, "Manager"),
             new Claim(OAuthTokenDefaults.RoleClaim, "Admin"),
@@ -20,6 +21,7 @@ public sealed class IdentityContextTests
             new Claim(OAuthTokenDefaults.ScopeClaim, "mobile-app.full_access openid"));
 
         request.UserId.ShouldBe("01a0a3b9-952e-79eb-8e98-02699a0566e9");
+        request.ExternalUserId.ShouldBe("01a0a3b9-952e-79eb-8e98-02699a0566e9");
         request.GetRoles().ShouldBe(["Admin", "Manager"]);
         request.GetScopes().ShouldBe(
         [
@@ -36,6 +38,7 @@ public sealed class IdentityContextTests
         var request = new IdentityContext(new HttpContextAccessor());
 
         request.UserId.ShouldBeNull();
+        request.ExternalUserId.ShouldBeNull();
         request.GetRoles().ShouldBeEmpty();
         request.GetScopes().ShouldBeEmpty();
     }
@@ -50,6 +53,7 @@ public sealed class IdentityContextTests
             new Claim(OAuthTokenDefaults.ScopeClaim, "location-service.full_access"));
 
         request.UserId.ShouldBeNull();
+        request.ExternalUserId.ShouldBeNull();
         request.GetRoles().ShouldBeEmpty();
         request.GetScopes().ShouldBeEmpty();
     }
