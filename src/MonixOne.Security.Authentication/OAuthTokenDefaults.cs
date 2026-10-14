@@ -21,6 +21,11 @@ public static class OAuthTokenDefaults
     public const string SubjectClaim = "sub";
 
     /// <summary>
+    /// Имя claim, содержащего неизменяемый внешний идентификатор субъекта access token.
+    /// </summary>
+    public const string SubjectExternalClaim = "sub-ext";
+
+    /// <summary>
     /// Имя claim, содержащего роль пользователя.
     /// </summary>
     public const string RoleClaim = "role";

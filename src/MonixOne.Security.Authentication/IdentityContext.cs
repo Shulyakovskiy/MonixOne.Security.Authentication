@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using Microsoft.AspNetCore.Http;
 
 namespace MonixOne.Security.Authentication;
@@ -23,8 +24,20 @@ public sealed class IdentityContext : IIdentityContext
     {
         get
         {
-            var subject = GetAuthenticatedUser()?.FindFirst(OAuthTokenDefaults.SubjectClaim)?.Value;
+            var subject = GetAuthenticatedUser()?
+                .FindFirst(OAuthTokenDefaults.SubjectClaim)?.Value;
             return string.IsNullOrWhiteSpace(subject) ? null : subject;
+        }
+    }
+
+    /// <inheritdoc />
+    public string? ExternalUserId
+    {
+        get
+        {
+            var externalSubject = GetAuthenticatedUser()?
+                .FindFirst(OAuthTokenDefaults.SubjectExternalClaim)?.Value;
+            return string.IsNullOrWhiteSpace(externalSubject) ? null : externalSubject;
         }
     }
 
@@ -48,7 +61,7 @@ public sealed class IdentityContext : IIdentityContext
                 .Distinct(StringComparer.Ordinal)
             : Enumerable.Empty<string>();
 
-    private System.Security.Claims.ClaimsPrincipal? GetAuthenticatedUser()
+    private ClaimsPrincipal? GetAuthenticatedUser()
     {
         var user = _httpContextAccessor.HttpContext?.User;
         return user?.Identity?.IsAuthenticated is true ? user : null;
