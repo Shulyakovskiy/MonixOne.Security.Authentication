@@ -8,7 +8,7 @@ using Refit;
 namespace MonixOne.Security.Authentication;
 
 /// <summary>
-/// Регистрация исходящих HTTP-клиентов с client credentials authentication.
+/// Регистрация исходящих HTTP-клиентов с настраиваемой аутентификацией.
 /// </summary>
 public static class ServiceClientServiceCollectionExtensions
 {
@@ -18,24 +18,32 @@ public static class ServiceClientServiceCollectionExtensions
     /// <remarks>
     /// Если секция <c>ServiceClients</c> отсутствует или <c>Services</c> пуста,
     /// метод не меняет контейнер и не читает client credentials.
+    /// Настройки Identity нужны только при регистрации группы с client credentials.
     /// </remarks>
     public static IServiceCollection AddServiceClients(
         this IServiceCollection services,
         IConfiguration configuration,
-        IConfiguration identityConfiguration,
+        IConfiguration? identityConfiguration,
         Action<ServiceClientRegistrar> registerContracts)
     {
         ArgumentNullException.ThrowIfNull(services);
         ArgumentNullException.ThrowIfNull(configuration);
-        ArgumentNullException.ThrowIfNull(identityConfiguration);
         ArgumentNullException.ThrowIfNull(registerContracts);
 
         var section = configuration.GetSection(ServiceClientsOptions.SectionName);
         if (!section.Exists())
             return services;
 
-        var options = section.Get<ServiceClientsOptions>();
-        if (options is null || !options.HasServices)
+        // Bind each service directly so invalid values cannot be silently skipped by array binding.
+        var options = new ServiceClientsOptions
+        {
+            Services = section.GetSection(nameof(ServiceClientsOptions.Services))
+                .GetChildren()
+                .Select(service => service.Get<ServiceClientOptions>()
+                    ?? throw new InvalidOperationException($"Секция '{service.Path}' должна содержать настройки сервиса."))
+                .ToArray()
+        };
+        if (!options.HasServices)
             return services;
 
         options.Validate();
@@ -53,8 +61,10 @@ public static class ServiceClientServiceCollectionExtensions
     }
 
     private static ClientCredentialsClient CreateClientCredentialsOptions(
-        IConfiguration identityConfiguration)
+        IConfiguration? identityConfiguration)
     {
+        ArgumentNullException.ThrowIfNull(identityConfiguration);
+
         var authority = identityConfiguration["Authority"];
         if (!Uri.TryCreate(authority, UriKind.Absolute, out var authorityUri)
             || (authorityUri.Scheme != Uri.UriSchemeHttp
@@ -123,24 +133,28 @@ public sealed class ServiceClientRegistrar
         if (!_serviceClients.TryGetService(group, out var service))
             return;
 
-        var tokenClientName = ClientCredentialsClientName.Parse(service.Group);
-        if (_registeredGroups.Add(service.Group))
-        {
-            var credentials = _clientCredentials ??= _createClientCredentials();
-            (_tokenManagement ??= _createTokenManagement()).AddClient(tokenClientName, client =>
-            {
-                client.TokenEndpoint = credentials.TokenEndpoint;
-                client.ClientId = credentials.ClientId;
-                client.ClientSecret = credentials.ClientSecret;
-                client.ClientCredentialStyle = credentials.ClientCredentialStyle;
-                client.Scope = Scope.Parse(string.Join(' ', service.Scopes));
-            });
-        }
-
         var clientBuilder = _services
             .AddRefitGeneratedClient<TClient>(new RefitSettings(), service.Group)
-            .ConfigureHttpClient(client => client.BaseAddress = service.BaseAddress)
-            .AddClientCredentialsTokenHandler(tokenClientName);
+            .ConfigureHttpClient(client => client.BaseAddress = service.BaseAddress);
+
+        if (service.Authentication == ServiceClientAuthentication.ClientCredentials)
+        {
+            var tokenClientName = ClientCredentialsClientName.Parse(service.Group);
+            if (_registeredGroups.Add(service.Group))
+            {
+                var credentials = _clientCredentials ??= _createClientCredentials();
+                (_tokenManagement ??= _createTokenManagement()).AddClient(tokenClientName, client =>
+                {
+                    client.TokenEndpoint = credentials.TokenEndpoint;
+                    client.ClientId = credentials.ClientId;
+                    client.ClientSecret = credentials.ClientSecret;
+                    client.ClientCredentialStyle = credentials.ClientCredentialStyle;
+                    client.Scope = Scope.Parse(string.Join(' ', service.Scopes));
+                });
+            }
+
+            clientBuilder.AddClientCredentialsTokenHandler(tokenClientName);
+        }
 
         var resilienceBuilder = _resilienceSection.Exists()
             ? clientBuilder.AddStandardResilienceHandler(_resilienceSection)
