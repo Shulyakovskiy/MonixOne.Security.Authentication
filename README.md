@@ -12,8 +12,8 @@ Reusable JWT Bearer authentication и OAuth scope authorization для ASP.NET C
 - требуемый OAuth scope.
 
 Она не выпускает tokens и не заменяет domain authorization конечного сервиса. Опциональное
-расширение `AddServiceClients` получает client credentials tokens только для явно
-зарегистрированных исходящих HTTP-контрактов.
+расширение `AddServiceClients` регистрирует исходящие HTTP-контракты и при необходимости
+получает client credentials tokens.
 
 ## Подключение
 
@@ -107,9 +107,19 @@ builder.Services.AddIdentityContext();
 
 ## Service-to-service HTTP-клиенты
 
-`AddServiceClients` связывает Refit-контракты с настройками из `appsettings` и добавляет
-client credentials handler с кэшированием access token. В первом аргументе передаётся секция,
-содержащая `ServiceClients` (например, `Infrastructure`), во втором — секция `Identity`.
+`AddServiceClients` связывает Refit-контракты с настройками из `appsettings`. Режим
+`Authentication` задаётся отдельно для каждой группы:
+
+| Authentication | Поведение | Обязательные настройки |
+| --- | --- | --- |
+| `ClientCredentials` (по умолчанию) | Получает и кэширует access token, добавляет `Authorization: Bearer ...` | `Identity:Authority`, `Identity:ClientId`, `Identity:ClientSecret` и непустые `Scopes` |
+| `None` | Не подключает token handler и не обращается к Identity | `Identity` и `Scopes` не требуются; `Scopes` игнорируются |
+
+В первом аргументе передаётся секция, содержащая `ServiceClients` (например,
+`Infrastructure`), во втором — секция `Identity`. Если регистрируются только группы
+`None`, вторым аргументом можно передать `null` или `GetSection("Identity")`, даже когда
+секции `Identity` нет. Для существующих конфигураций без `Authentication` сохраняется
+`ClientCredentials`. Неизвестные значения режима приводят к ошибке регистрации.
 
 Если `ServiceClients` отсутствует или `Services` пуст, метод ничего не регистрирует — в том
 числе не требует `Identity:Authority`, `Identity:ClientId` и `Identity:ClientSecret`. Контракт,
@@ -124,7 +134,13 @@ client credentials handler с кэшированием access token. В перв
         {
           "Group": "profile",
           "BaseAddress": "https://profile.internal",
+          "Authentication": "ClientCredentials",
           "Scopes": ["profile-service.intra_read"]
+        },
+        {
+          "Group": "postgrest",
+          "BaseAddress": "http://postgrest:3000",
+          "Authentication": "None"
         }
       ]
     }
@@ -147,12 +163,65 @@ builder.Services.AddServiceClients(
     {
         // Регистрация контракта
         registrar.Add<IProfileService>(ProfileServiceGroup.Name);
+        registrar.Add<IPostgRestService>("postgrest");
     });
 ```
 
-Для каждого сервиса обязательны абсолютный HTTP(S) `BaseAddress`, уникальный `Group` и хотя бы
-один `Scope`. Если `Resilience` не задан, применяется стандартный resilience pipeline .NET;
-его можно настроить в `ServiceClients:Resilience`.
+Для каждого сервиса обязательны абсолютный HTTP(S) `BaseAddress` и уникальный `Group`.
+Хотя бы один непустой `Scope` обязателен только для `ClientCredentials`. Если `Resilience`
+не задан, для обоих режимов применяется стандартный resilience pipeline .NET; его можно
+настроить в `ServiceClients:Resilience`. Повторные попытки для небезопасных HTTP-методов
+отключены.
+
+### PostgREST без токена
+
+Если нужен только анонимный PostgREST, достаточно следующего `appsettings.json` без
+секции `Identity` и без `Scopes`:
+
+```json
+{
+  "Infrastructure": {
+    "ServiceClients": {
+      "Services": [
+        {
+          "Group": "postgrest",
+          "BaseAddress": "http://postgrest:3000",
+          "Authentication": "None"
+        }
+      ]
+    }
+  }
+}
+```
+
+Зарегистрируйте прикладной Refit-контракт:
+
+```csharp
+using MonixOne.Security.Authentication;
+using Refit;
+
+builder.Services.AddServiceClients(
+    builder.Configuration.GetRequiredSection("Infrastructure"),
+    identityConfiguration: null,
+    registerContracts: registrar => registrar.Add<IPostgRestService>("postgrest"));
+
+public interface IPostgRestService
+{
+    [Get("/locations")]
+    Task<LocationResponse[]> GetLocations(
+        [AliasAs("select")] string select,
+        CancellationToken ct);
+}
+
+public sealed record LocationResponse(int Id, string Name);
+```
+
+Вызов `GetLocations("id,name", ct)` выполнит `GET /locations?select=id%2Cname` без
+автоматического добавления `Authorization`. Настройка `None` управляет только исходящим
+клиентом. В самом PostgREST должна быть задана `db-anon-role` (например, через
+`PGRST_DB_ANON_ROLE=web_anon`), а эта роль должна иметь права на используемую схему и
+чтение `locations`; роль подключения PostgREST должна иметь право переключаться в неё.
+Подробнее — в [документации PostgREST](https://docs.postgrest.org/en/v14/references/auth.html).
 
 ## Публикация
 

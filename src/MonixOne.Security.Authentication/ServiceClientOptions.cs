@@ -3,7 +3,7 @@ using System.Diagnostics.CodeAnalysis;
 namespace MonixOne.Security.Authentication;
 
 /// <summary>
-/// Настройки исходящих HTTP-клиентов, использующих client credentials.
+/// Настройки исходящих HTTP-клиентов.
 /// </summary>
 public sealed class ServiceClientsOptions
 {
@@ -63,7 +63,14 @@ public sealed class ServiceClientsOptions
                     $"ServiceClients:Services:BaseAddress для группы '{service.Group}' должен быть абсолютным HTTP(S) URI.");
             }
 
-            if (service.Scopes.Length == 0 || service.Scopes.Any(string.IsNullOrWhiteSpace))
+            if (!Enum.IsDefined(service.Authentication))
+            {
+                throw new InvalidOperationException(
+                    $"ServiceClients:Services:Authentication для группы '{service.Group}' должен быть ClientCredentials или None.");
+            }
+
+            if (service.Authentication == ServiceClientAuthentication.ClientCredentials
+                && (service.Scopes.Length == 0 || service.Scopes.Any(string.IsNullOrWhiteSpace)))
             {
                 throw new InvalidOperationException(
                     $"ServiceClients:Services:Scopes для группы '{service.Group}' должен содержать хотя бы один scope.");
@@ -88,7 +95,28 @@ public sealed class ServiceClientOptions
     public Uri? BaseAddress { get; init; }
 
     /// <summary>
-    /// OAuth scopes, запрашиваемые для вызовов сервиса.
+    /// Режим аутентификации группы. По умолчанию используется client credentials.
+    /// </summary>
+    public ServiceClientAuthentication Authentication { get; init; } = ServiceClientAuthentication.ClientCredentials;
+
+    /// <summary>
+    /// OAuth scopes, обязательные для client credentials и не используемые при None.
     /// </summary>
     public string[] Scopes { get; init; } = [];
+}
+
+/// <summary>
+/// Режим аутентификации исходящих запросов группы сервисов.
+/// </summary>
+public enum ServiceClientAuthentication
+{
+    /// <summary>
+    /// Получать и отправлять access token с помощью client credentials.
+    /// </summary>
+    ClientCredentials,
+
+    /// <summary>
+    /// Не подключать client credentials handler и не запрашивать access token.
+    /// </summary>
+    None
 }
