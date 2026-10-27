@@ -45,6 +45,9 @@ public sealed class IdentityContext : IIdentityContext
     }
 
     /// <inheritdoc />
+    public string? TenantId => GetAuthenticatedUser()?.GetTenantId();
+
+    /// <inheritdoc />
     public IEnumerable<string> GetRoles() => GetClaimValues(OAuthTokenDefaults.RoleClaim);
 
     /// <inheritdoc />

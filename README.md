@@ -9,7 +9,8 @@ Reusable JWT Bearer authentication и OAuth scope authorization для ASP.NET C
 - точный `audience`;
 - обязательный `exp` и временные границы `nbf`/`exp`;
 - JOSE type `at+jwt`;
-- требуемый OAuth scope.
+- требуемый OAuth scope;
+- tenant из claim `tenant_id`, если endpoint защищён policy с `RequireTenant`.
 
 Она не выпускает tokens и не заменяет domain authorization конечного сервиса. Опциональное
 расширение `AddServiceClients` регистрирует исходящие HTTP-контракты и при необходимости
@@ -88,22 +89,60 @@ app.MapGet("/api/v1/profile", (IIdentityContext identity) =>
 {
     var isAuthenticated = identity.IsAuthenticated;
     var userId = identity.UserId;
+    var tenantId = identity.TenantId;
     var roles = identity.GetRoles();
     var scopes = identity.GetScopes();
 
-    return Results.Ok(new { isAuthenticated, userId, roles, scopes });
+    return Results.Ok(new { isAuthenticated, userId, tenantId, roles, scopes });
 }).RequireAuthorization();
 ```
 
 `IsAuthenticated` отражает `HttpContext.User.Identity.IsAuthenticated` и не зависит от наличия claim `sub`. `UserId` — точное непустое значение claim `sub`, поэтому библиотека не предполагает, что идентификатор обязательно имеет формат `Guid`. `GetRoles()` перечисляет повторяющиеся claims `role`, а `GetScopes()` — повторяющиеся или разделённые пробелами claims `scope`; значения в каждой последовательности уникальны и не копируются при вызове метода.
 
-Если access token отсутствует, не прошёл authentication или код выполняется вне HTTP-запроса, `IsAuthenticated` равен `false`, `UserId` и `ExternalUserId` равны `null`, а `GetRoles()` и `GetScopes()` возвращают пустую последовательность. Это не заменяет endpoint authorization: доступ по ролям и scopes по-прежнему должен защищаться policy либо доменной проверкой.
+`TenantId` возвращает единственное непустое значение claim `tenant_id` из аутентифицированных
+identities. Если claim отсутствует, пуст или повторяется, возвращается `null`, в том числе
+при повторе одинаковых значений. Имя claim и его значение учитывают регистр; значение
+не нормализуется. Заголовки и query-параметры запроса не задают tenant, default tenant
+не подставляется.
+
+Если access token отсутствует, не прошёл authentication или код выполняется вне HTTP-запроса, `IsAuthenticated` равен `false`, `UserId`, `ExternalUserId` и `TenantId` равны `null`, а `GetRoles()` и `GetScopes()` возвращают пустую последовательность. Это не заменяет endpoint authorization: доступ по ролям и scopes по-прежнему должен защищаться policy либо доменной проверкой.
 
 Если сервис настраивает authentication самостоятельно и не вызывает `AddPlatformAuthentication`, зарегистрируйте reader отдельно:
 
 ```csharp
 builder.Services.AddIdentityContext();
 ```
+
+## Проверка tenant в пользовательских JWT
+
+Объедините tenant и scope в одной policy и явно примените её к endpoint:
+
+```csharp
+builder.Services.AddAuthorization(options =>
+{
+    options.AddPolicy("lkb.read", policy => policy
+        .RequireScope("lkb.full_access")
+        .RequireTenant("lkb"));
+});
+
+app.MapGet("/api/v1/business-data", Handle)
+    .RequireAuthorization("lkb.read");
+```
+
+`RequireTenant` требует аутентифицированного principal и единственного непустого claim
+`tenant_id`, точно совпадающего с ожидаемым tenant с учётом регистра. Отсутствующий,
+пустой, повторяющийся или чужой tenant не проходит policy. При стандартной Bearer
+конфигурации отсутствие аутентификации даёт `401`, а отказ policy для действительного
+токена — `403`.
+
+Tenant и scope задаёт приложение. Для отдельного Lkb API настройте также
+`Identity:Audience=beetroute-lkb-api`. Проверка policy не заменяет ограничение доступа
+к данным tenant в конечном сервисе.
+
+Проверка tenant включается только через `RequireTenant`: существующие scope policies,
+JWT validation и service-to-service клиенты продолжают работать без `tenant_id`.
+При обновлении до 2.0.0 собственные реализации `IIdentityContext` должны реализовать новое
+свойство `TenantId`.
 
 ## Service-to-service HTTP-клиенты
 

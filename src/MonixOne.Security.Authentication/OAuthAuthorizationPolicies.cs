@@ -3,7 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 namespace MonixOne.Security.Authentication;
 
 /// <summary>
-/// Формирует единообразные authorization policies для OAuth scopes.
+/// Формирует единообразные authorization policies для OAuth scopes и tenant.
 /// </summary>
 public static class OAuthAuthorizationPolicies
 {
@@ -44,5 +44,21 @@ public static class OAuthAuthorizationPolicies
         return policy
             .RequireAuthenticatedUser()
             .RequireAssertion(context => context.User.HasScope(scope));
+    }
+
+    /// <summary>
+    /// Требует аутентифицированного пользователя с единственным непустым claim <c>tenant_id</c>.
+    /// Значение claim должно точно совпадать с указанным tenant с учётом регистра.
+    /// </summary>
+    public static AuthorizationPolicyBuilder RequireTenant(
+        this AuthorizationPolicyBuilder policy,
+        string tenantId)
+    {
+        ArgumentNullException.ThrowIfNull(policy);
+        ArgumentException.ThrowIfNullOrWhiteSpace(tenantId);
+
+        return policy
+            .RequireAuthenticatedUser()
+            .RequireAssertion(context => string.Equals(context.User.GetTenantId(), tenantId, StringComparison.Ordinal));
     }
 }

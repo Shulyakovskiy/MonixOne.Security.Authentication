@@ -26,6 +26,11 @@ public static class OAuthTokenDefaults
     public const string SubjectExternalClaim = "sub-ext";
 
     /// <summary>
+    /// Имя claim, содержащего область аккаунта субъекта access token.
+    /// </summary>
+    public const string TenantIdClaim = "tenant_id";
+
+    /// <summary>
     /// Имя claim, содержащего роль пользователя.
     /// </summary>
     public const string RoleClaim = "role";
