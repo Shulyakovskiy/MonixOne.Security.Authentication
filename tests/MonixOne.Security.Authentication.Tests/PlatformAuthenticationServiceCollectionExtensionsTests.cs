@@ -1,9 +1,17 @@
+using System.Security.Claims;
+using System.Security.Cryptography;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
+using Microsoft.IdentityModel.JsonWebTokens;
+using Microsoft.IdentityModel.Protocols.OpenIdConnect;
+using Microsoft.IdentityModel.Tokens;
 using Shouldly;
 using Xunit;
 
@@ -132,6 +140,83 @@ public sealed class PlatformAuthenticationServiceCollectionExtensionsTests
 
         // Assert
         exception.Failures.ShouldContain(failure => failure.Contains("Identity:ClockSkewSeconds", StringComparison.Ordinal));
+    }
+
+    [Theory]
+    [InlineData("lkb", false, true)]
+    [InlineData("mbr", false, false)]
+    [InlineData(null, false, false)]
+    [InlineData("", false, false)]
+    [InlineData("lkb", true, false)]
+    public async Task JwtBearer_TenantPolicy_UsesValidatedTokenClaims(
+        string? tenantId,
+        bool repeatTenant,
+        bool expectedAuthorization)
+    {
+        using var rsa = RSA.Create(2048);
+        var signingKey = new RsaSecurityKey(rsa) { KeyId = "test-key" };
+        var metadata = new OpenIdConnectConfiguration { Issuer = Authority };
+        metadata.SigningKeys.Add(signingKey);
+        var services = new ServiceCollection();
+        services.AddLogging();
+        services.AddPlatformAuthentication(CreateConfiguration(), new TestHostEnvironment("Production"));
+        services.Configure<JwtBearerOptions>(JwtBearerDefaults.AuthenticationScheme,
+            options => options.Configuration = metadata);
+        services.AddAuthorization(options =>
+        {
+            options.AddScopePolicy("resource.read");
+            options.AddPolicy("tenant-access", policy => policy
+                .RequireScope("resource.read")
+                .RequireTenant("lkb"));
+        });
+        var claims = new List<Claim>
+        {
+            new(OAuthTokenDefaults.SubjectClaim, tenantId is null ? "location-service" : "user-1"),
+            new(OAuthTokenDefaults.ScopeClaim, "resource.read")
+        };
+        if (tenantId is not null)
+        {
+            claims.Add(new Claim(OAuthTokenDefaults.TenantIdClaim, tenantId));
+            if (repeatTenant)
+                claims.Add(new Claim(OAuthTokenDefaults.TenantIdClaim, tenantId));
+        }
+
+        var token = new JsonWebTokenHandler().CreateToken(new SecurityTokenDescriptor
+        {
+            Issuer = Authority,
+            Audience = Audience,
+            Subject = new ClaimsIdentity(claims),
+            SigningCredentials = new SigningCredentials(signingKey, SecurityAlgorithms.RsaSha256),
+            TokenType = OAuthTokenDefaults.AccessTokenType,
+            Expires = DateTime.UtcNow.AddMinutes(5)
+        });
+        await using var provider = services.BuildServiceProvider();
+        await using var scope = provider.CreateAsyncScope();
+        var context = new DefaultHttpContext { RequestServices = scope.ServiceProvider };
+        context.Request.Headers.Authorization = "Bearer " + token;
+        context.Request.Headers["X-Tenant-Id"] = tenantId == "lkb" ? "mbr" : "lkb";
+        var accessor = provider.GetRequiredService<IHttpContextAccessor>();
+        accessor.HttpContext = context;
+        try
+        {
+            var authentication = await context.AuthenticateAsync(JwtBearerDefaults.AuthenticationScheme);
+            authentication.Succeeded.ShouldBeTrue();
+            context.User = authentication.Principal!;
+            var identity = scope.ServiceProvider.GetRequiredService<IIdentityContext>();
+            identity.TenantId.ShouldBe(repeatTenant || string.IsNullOrWhiteSpace(tenantId) ? null : tenantId);
+            var authorization = provider.GetRequiredService<IAuthorizationService>();
+
+            var scopeResult = await authorization.AuthorizeAsync(context.User, resource: null,
+                OAuthAuthorizationPolicies.ForScope("resource.read"));
+            var tenantResult = await authorization.AuthorizeAsync(context.User, resource: null, "tenant-access");
+
+            scopeResult.Succeeded.ShouldBeTrue();
+            tenantResult.Succeeded.ShouldBe(expectedAuthorization);
+        }
+        finally
+        {
+            accessor.HttpContext = null;
+        }
     }
 
     private static IConfiguration CreateConfiguration(

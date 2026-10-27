@@ -22,6 +22,12 @@ public interface IIdentityContext
     string? ExternalUserId { get; }
 
     /// <summary>
+    /// Возвращает единственное непустое значение claim <c>tenant_id</c> аутентифицированного пользователя.
+    /// Если claim отсутствует, повторяется или запрос не аутентифицирован, возвращает <see langword="null"/>.
+    /// </summary>
+    string? TenantId { get; }
+
+    /// <summary>
     /// Перечисляет уникальные значения claims <c>role</c> или не возвращает значений, если текущий запрос не аутентифицирован.
     /// </summary>
     IEnumerable<string> GetRoles();
