@@ -26,20 +26,34 @@ public static class ClaimsPrincipalExtensions
         if (principal.Identity?.IsAuthenticated is not true)
             return null;
 
-        string? tenantId = null;
+        return GetSingleAuthenticatedClaim(principal, OAuthTokenDefaults.TenantIdClaim);
+    }
+
+    internal static bool IsServiceIdentity(this ClaimsPrincipal principal)
+    {
+        // Identity выпускает client_credentials с sub=client_id.
+        // Отсутствия tenant для определения M2M недостаточно.
+        var subject = GetSingleAuthenticatedClaim(principal, OAuthTokenDefaults.SubjectClaim);
+        var clientId = GetSingleAuthenticatedClaim(principal, OAuthTokenDefaults.ClientIdClaim);
+        return subject is not null && string.Equals(subject, clientId, StringComparison.Ordinal);
+    }
+
+    private static string? GetSingleAuthenticatedClaim(ClaimsPrincipal principal, string claimType)
+    {
+        string? value = null;
         foreach (var claim in principal.Identities
                      .Where(identity => identity.IsAuthenticated)
                      .SelectMany(identity => identity.Claims))
         {
-            if (!string.Equals(claim.Type, OAuthTokenDefaults.TenantIdClaim, StringComparison.Ordinal))
+            if (!string.Equals(claim.Type, claimType, StringComparison.Ordinal))
                 continue;
 
-            if (tenantId is not null || string.IsNullOrWhiteSpace(claim.Value))
+            if (value is not null || string.IsNullOrWhiteSpace(claim.Value))
                 return null;
 
-            tenantId = claim.Value;
+            value = claim.Value;
         }
 
-        return tenantId;
+        return value;
     }
 }

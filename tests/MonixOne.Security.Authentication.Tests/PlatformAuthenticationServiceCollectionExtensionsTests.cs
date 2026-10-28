@@ -219,6 +219,70 @@ public sealed class PlatformAuthenticationServiceCollectionExtensionsTests
         }
     }
 
+    [Theory]
+    [InlineData("customer-a", false, false, true)]
+    [InlineData("customer-b", false, false, true)]
+    [InlineData("mbr", false, false, false)]
+    [InlineData(null, false, false, false)]
+    [InlineData("customer-a", false, true, false)]
+    [InlineData(null, true, false, true)]
+    public async Task JwtBearer_UserTenantAuthorization_UsesConfigAndPreservesServiceTokens(
+        string? tenantId, bool serviceToken, bool repeatTenant, bool expected)
+    {
+        // Arrange — JWT подписан, discovery/JWKS заданы локально без сетевого Identity.
+        using var rsa = RSA.Create(2048);
+        var key = new RsaSecurityKey(rsa) { KeyId = "test-key" };
+        var metadata = new OpenIdConnectConfiguration { Issuer = Authority };
+        metadata.SigningKeys.Add(key);
+        var configuration = CreateConfiguration();
+        configuration["Identity:AllowedUserTenants:0"] = "customer-a";
+        configuration["Identity:AllowedUserTenants:1"] = "customer-b";
+        var services = new ServiceCollection();
+        services.AddLogging();
+        services.AddSingleton<IConfiguration>(configuration);
+        services.AddPlatformAuthentication(configuration, new TestHostEnvironment("Production"));
+        services.AddUserTenantAuthorization();
+        services.Configure<JwtBearerOptions>(JwtBearerDefaults.AuthenticationScheme,
+            options => options.Configuration = metadata);
+        services.AddAuthorization(options => options.AddScopePolicy("resource.read"));
+        var claims = new List<Claim>
+        {
+            new("sub", serviceToken ? "django" : "user-1"),
+            new("client_id", serviceToken ? "django" : "mobile-app"),
+            new("scope", "resource.read")
+        };
+        if (tenantId is not null)
+        {
+            claims.Add(new Claim("tenant_id", tenantId));
+            if (repeatTenant)
+                claims.Add(new Claim("tenant_id", tenantId));
+        }
+
+        var token = new JsonWebTokenHandler().CreateToken(new SecurityTokenDescriptor
+        {
+            Issuer = Authority,
+            Audience = Audience,
+            Subject = new ClaimsIdentity(claims),
+            SigningCredentials = new SigningCredentials(key, SecurityAlgorithms.RsaSha256),
+            TokenType = OAuthTokenDefaults.AccessTokenType,
+            Expires = DateTime.UtcNow.AddMinutes(5)
+        });
+        await using var provider = services.BuildServiceProvider();
+        await using var scope = provider.CreateAsyncScope();
+        var context = new DefaultHttpContext { RequestServices = scope.ServiceProvider };
+        context.Request.Headers.Authorization = "Bearer " + token;
+
+        // Act
+        var authentication = await context.AuthenticateAsync(JwtBearerDefaults.AuthenticationScheme);
+        var authorization = provider.GetRequiredService<IAuthorizationService>();
+        var result = await authorization.AuthorizeAsync(authentication.Principal!, resource: null,
+            OAuthAuthorizationPolicies.ForScope("resource.read"));
+
+        // Assert — tenant влияет на authorization, а не на успешность проверки JWT.
+        authentication.Succeeded.ShouldBeTrue();
+        result.Succeeded.ShouldBe(expected);
+    }
+
     private static IConfiguration CreateConfiguration(
         string authority = Authority,
         bool requireHttpsMetadata = true,

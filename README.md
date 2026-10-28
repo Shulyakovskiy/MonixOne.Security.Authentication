@@ -115,34 +115,65 @@ builder.Services.AddIdentityContext();
 
 ## Проверка tenant в пользовательских JWT
 
-Объедините tenant и scope в одной policy и явно примените её к endpoint:
+Чтобы проверять tenant во всех выполняемых authorization policies, добавьте массив
+в конфигурацию приложения:
 
-```csharp
-builder.Services.AddAuthorization(options =>
+```json
 {
-    options.AddPolicy("lkb.read", policy => policy
-        .RequireScope("lkb.full_access")
-        .RequireTenant("lkb"));
-});
-
-app.MapGet("/api/v1/business-data", Handle)
-    .RequireAuthorization("lkb.read");
+  "Identity": {
+    "AllowedUserTenants": ["mbr", "lkb"]
+  }
+}
 ```
 
-`RequireTenant` требует аутентифицированного principal и единственного непустого claim
-`tenant_id`, точно совпадающего с ожидаемым tenant с учётом регистра. Отсутствующий,
-пустой, повторяющийся или чужой tenant не проходит policy. При стандартной Bearer
-конфигурации отсутствие аутентификации даёт `401`, а отказ policy для действительного
-токена — `403`.
+После `AddPlatformAuthentication` включите проверку одной строкой:
 
-Tenant и scope задаёт приложение. Для отдельного Lkb API настройте также
-`Identity:Audience=beetroute-lkb-api`. Проверка policy не заменяет ограничение доступа
-к данным tenant в конечном сервисе.
+```csharp
+builder.Services.AddUserTenantAuthorization();
+```
 
-Проверка tenant включается только через `RequireTenant`: существующие scope policies,
-JWT validation и service-to-service клиенты продолжают работать без `tenant_id`.
-При обновлении до 2.0.0 собственные реализации `IIdentityContext` должны реализовать новое
-свойство `TenantId`.
+Метод использует `IConfiguration` приложения из DI, зарегистрированный стандартным
+`WebApplicationBuilder`. Отсутствующий, пустой или содержащий пустые/повторные значения
+массив `Identity:AllowedUserTenants` приводит к ошибке при старте. Значения tenant
+не зашиты в пакет и сравниваются с учётом регистра.
+
+Регистрация scope policies и их применение к endpoints остаются обычными:
+
+```csharp
+builder.Services.AddAuthorization(options => options.AddScopePolicy("profile-service.full_access"));
+
+app.MapGet("/api/v1/profile", Handle)
+    .RequireAuthorization(OAuthAuthorizationPolicies.ForScope("profile-service.full_access"));
+```
+
+Общий authorization handler проверяет единственный непустой `tenant_id` только у
+аутентифицированных пользователей. Отсутствующий, пустой, неизвестный или повторный
+claim даёт отказ авторизации (`403` при стандартной Bearer-конфигурации). Проверка
+подписи, issuer, audience и срока JWT при этом сохраняется; tenant не влияет на
+результат authentication.
+
+M2M principal с единственными непустыми подписанными claims `sub=client_id` не требует
+`tenant_id`. Отсутствия tenant самого по себе недостаточно для определения M2M.
+Handler не выдаёт доступ: scopes, роли и доменные проверки продолжают выполняться.
+Выдача и кэширование service tokens не меняются.
+
+Без `AddUserTenantAuthorization` существующие scope policies продолжают работать
+без tenant-проверки. Анонимные endpoints не становятся защищёнными автоматически.
+Если публичный endpoint принимает optional Bearer и должен проверять предъявленный
+токен, явно выполните его policy через `IAuthorizationService.AuthorizeAsync`.
+
+Для endpoint, которому нужен ровно один tenant независимо от типа токена, остаётся
+точечная проверка:
+
+```csharp
+builder.Services.AddAuthorization(options => options.AddPolicy("lkb.read", policy => policy
+    .RequireScope("profile-service.full_access")
+    .RequireTenant("lkb")));
+```
+
+Проверка допустимого tenant не заменяет ограничение доступа к данным tenant в
+конечном сервисе. При обновлении с 1.x собственные реализации `IIdentityContext`
+должны реализовать свойство `TenantId`, добавленное в 2.0.0.
 
 ## Service-to-service HTTP-клиенты
 
