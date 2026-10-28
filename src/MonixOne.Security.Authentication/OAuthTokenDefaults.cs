@@ -21,6 +21,11 @@ public static class OAuthTokenDefaults
     public const string SubjectClaim = "sub";
 
     /// <summary>
+    /// Имя claim, содержащего идентификатор OAuth-клиента, которому выдан access token.
+    /// </summary>
+    public const string ClientIdClaim = "client_id";
+
+    /// <summary>
     /// Имя claim, содержащего неизменяемый внешний идентификатор субъекта access token.
     /// </summary>
     public const string SubjectExternalClaim = "sub-ext";
