@@ -13,26 +13,34 @@ public sealed class IdentityContextTests
         var request = CreateRequest(
             isAuthenticated: true,
             new Claim(OAuthTokenDefaults.SubjectClaim, "01a0a3b9-952e-79eb-8e98-02699a0566e9"),
-            new Claim(OAuthTokenDefaults.SubjectExternalClaim, "01a0a3b9-952e-79eb-8e98-02699a0566e9"),
+            new Claim(
+                OAuthTokenDefaults.SubjectExternalClaim,
+                "01a0a3b9-952e-79eb-8e98-02699a0566e9"
+            ),
             new Claim(OAuthTokenDefaults.TenantIdClaim, "lkb"),
             new Claim(OAuthTokenDefaults.RoleClaim, "Admin"),
             new Claim(OAuthTokenDefaults.RoleClaim, "Manager"),
             new Claim(OAuthTokenDefaults.RoleClaim, "Admin"),
-            new Claim(OAuthTokenDefaults.ScopeClaim, "openid offline_access location-service.full_access"),
-            new Claim(OAuthTokenDefaults.ScopeClaim, "mobile-app.full_access openid"));
+            new Claim(
+                OAuthTokenDefaults.ScopeClaim,
+                "openid offline_access location-service.full_access"
+            ),
+            new Claim(OAuthTokenDefaults.ScopeClaim, "mobile-app.full_access openid")
+        );
 
         request.IsAuthenticated.ShouldBeTrue();
         request.UserId.ShouldBe("01a0a3b9-952e-79eb-8e98-02699a0566e9");
         request.ExternalUserId.ShouldBe("01a0a3b9-952e-79eb-8e98-02699a0566e9");
         request.TenantId.ShouldBe("lkb");
         request.GetRoles().ShouldBe(["Admin", "Manager"]);
-        request.GetScopes().ShouldBe(
-        [
-            "openid",
-            "offline_access",
-            "location-service.full_access",
-            "mobile-app.full_access"
-        ]);
+        request
+            .GetScopes()
+            .ShouldBe([
+                "openid",
+                "offline_access",
+                "location-service.full_access",
+                "mobile-app.full_access",
+            ]);
     }
 
     [Fact]
@@ -69,7 +77,8 @@ public sealed class IdentityContextTests
             new Claim(OAuthTokenDefaults.SubjectClaim, "01a0a3b9-952e-79eb-8e98-02699a0566e9"),
             new Claim(OAuthTokenDefaults.TenantIdClaim, "lkb"),
             new Claim(OAuthTokenDefaults.RoleClaim, "Admin"),
-            new Claim(OAuthTokenDefaults.ScopeClaim, "location-service.full_access"));
+            new Claim(OAuthTokenDefaults.ScopeClaim, "location-service.full_access")
+        );
 
         request.IsAuthenticated.ShouldBeFalse();
         request.UserId.ShouldBeNull();
@@ -92,7 +101,8 @@ public sealed class IdentityContextTests
     public void TenantId_ReturnsOnlySingleNonEmptyClaim(
         string? tenantId,
         string? secondTenantId,
-        string? expected)
+        string? expected
+    )
     {
         var claims = new[] { tenantId, secondTenantId }
             .Where(value => value is not null)
@@ -107,11 +117,9 @@ public sealed class IdentityContextTests
     {
         var identity = new ClaimsIdentity(
             claims,
-            authenticationType: isAuthenticated ? "Test" : null);
-        var context = new DefaultHttpContext
-        {
-            User = new ClaimsPrincipal(identity)
-        };
+            authenticationType: isAuthenticated ? "Test" : null
+        );
+        var context = new DefaultHttpContext { User = new ClaimsPrincipal(identity) };
 
         return new IdentityContext(new HttpContextAccessor { HttpContext = context });
     }

@@ -51,7 +51,9 @@ public sealed class PlatformAuthenticationServiceCollectionExtensionsTests
         options.TokenValidationParameters.ValidateAudience.ShouldBeTrue();
         options.TokenValidationParameters.ValidateIssuerSigningKey.ShouldBeTrue();
         options.TokenValidationParameters.ValidateLifetime.ShouldBeTrue();
-        options.TokenValidationParameters.ValidTypes.ShouldContain(OAuthTokenDefaults.AccessTokenType);
+        options.TokenValidationParameters.ValidTypes.ShouldContain(
+            OAuthTokenDefaults.AccessTokenType
+        );
     }
 
     /// <summary>
@@ -63,16 +65,19 @@ public sealed class PlatformAuthenticationServiceCollectionExtensionsTests
         // Arrange
         var configuration = CreateConfiguration(
             authority: "http://identity.example.test",
-            requireHttpsMetadata: false);
+            requireHttpsMetadata: false
+        );
         var services = new ServiceCollection();
 
         // Act
         var exception = Should.Throw<OptionsValidationException>(() =>
-            services.AddPlatformAuthentication(configuration, new TestHostEnvironment("Production")));
+            services.AddPlatformAuthentication(configuration, new TestHostEnvironment("Production"))
+        );
 
         // Assert
         exception.Failures.ShouldContain(
-            "Параметр 'Identity:RequireHttpsMetadata' можно отключать только в окружении Local.");
+            "Параметр 'Identity:RequireHttpsMetadata' можно отключать только в окружении Local."
+        );
     }
 
     /// <summary>
@@ -84,7 +89,8 @@ public sealed class PlatformAuthenticationServiceCollectionExtensionsTests
         // Arrange
         var configuration = CreateConfiguration(
             authority: "http://localhost:8000",
-            requireHttpsMetadata: false);
+            requireHttpsMetadata: false
+        );
         var services = new ServiceCollection();
         services.AddLogging();
 
@@ -128,7 +134,9 @@ public sealed class PlatformAuthenticationServiceCollectionExtensionsTests
     [Theory]
     [InlineData(-1)]
     [InlineData(301)]
-    public void AddPlatformAuthentication_InvalidClockSkew_ThrowsValidationException(int clockSkewSeconds)
+    public void AddPlatformAuthentication_InvalidClockSkew_ThrowsValidationException(
+        int clockSkewSeconds
+    )
     {
         // Arrange
         var configuration = CreateConfiguration(clockSkewSeconds: clockSkewSeconds);
@@ -136,10 +144,13 @@ public sealed class PlatformAuthenticationServiceCollectionExtensionsTests
 
         // Act
         var exception = Should.Throw<OptionsValidationException>(() =>
-            services.AddPlatformAuthentication(configuration, new TestHostEnvironment("Production")));
+            services.AddPlatformAuthentication(configuration, new TestHostEnvironment("Production"))
+        );
 
         // Assert
-        exception.Failures.ShouldContain(failure => failure.Contains("Identity:ClockSkewSeconds", StringComparison.Ordinal));
+        exception.Failures.ShouldContain(failure =>
+            failure.Contains("Identity:ClockSkewSeconds", StringComparison.Ordinal)
+        );
     }
 
     [Theory]
@@ -151,7 +162,8 @@ public sealed class PlatformAuthenticationServiceCollectionExtensionsTests
     public async Task JwtBearer_TenantPolicy_UsesValidatedTokenClaims(
         string? tenantId,
         bool repeatTenant,
-        bool expectedAuthorization)
+        bool expectedAuthorization
+    )
     {
         using var rsa = RSA.Create(2048);
         var signingKey = new RsaSecurityKey(rsa) { KeyId = "test-key" };
@@ -159,20 +171,26 @@ public sealed class PlatformAuthenticationServiceCollectionExtensionsTests
         metadata.SigningKeys.Add(signingKey);
         var services = new ServiceCollection();
         services.AddLogging();
-        services.AddPlatformAuthentication(CreateConfiguration(), new TestHostEnvironment("Production"));
-        services.Configure<JwtBearerOptions>(JwtBearerDefaults.AuthenticationScheme,
-            options => options.Configuration = metadata);
+        services.AddPlatformAuthentication(
+            CreateConfiguration(),
+            new TestHostEnvironment("Production")
+        );
+        services.Configure<JwtBearerOptions>(
+            JwtBearerDefaults.AuthenticationScheme,
+            options => options.Configuration = metadata
+        );
         services.AddAuthorization(options =>
         {
             options.AddScopePolicy("resource.read");
-            options.AddPolicy("tenant-access", policy => policy
-                .RequireScope("resource.read")
-                .RequireTenant("lkb"));
+            options.AddPolicy(
+                "tenant-access",
+                policy => policy.RequireScope("resource.read").RequireTenant("lkb")
+            );
         });
         var claims = new List<Claim>
         {
             new(OAuthTokenDefaults.SubjectClaim, tenantId is null ? "location-service" : "user-1"),
-            new(OAuthTokenDefaults.ScopeClaim, "resource.read")
+            new(OAuthTokenDefaults.ScopeClaim, "resource.read"),
         };
         if (tenantId is not null)
         {
@@ -181,15 +199,20 @@ public sealed class PlatformAuthenticationServiceCollectionExtensionsTests
                 claims.Add(new Claim(OAuthTokenDefaults.TenantIdClaim, tenantId));
         }
 
-        var token = new JsonWebTokenHandler().CreateToken(new SecurityTokenDescriptor
-        {
-            Issuer = Authority,
-            Audience = Audience,
-            Subject = new ClaimsIdentity(claims),
-            SigningCredentials = new SigningCredentials(signingKey, SecurityAlgorithms.RsaSha256),
-            TokenType = OAuthTokenDefaults.AccessTokenType,
-            Expires = DateTime.UtcNow.AddMinutes(5)
-        });
+        var token = new JsonWebTokenHandler().CreateToken(
+            new SecurityTokenDescriptor
+            {
+                Issuer = Authority,
+                Audience = Audience,
+                Subject = new ClaimsIdentity(claims),
+                SigningCredentials = new SigningCredentials(
+                    signingKey,
+                    SecurityAlgorithms.RsaSha256
+                ),
+                TokenType = OAuthTokenDefaults.AccessTokenType,
+                Expires = DateTime.UtcNow.AddMinutes(5),
+            }
+        );
         await using var provider = services.BuildServiceProvider();
         await using var scope = provider.CreateAsyncScope();
         var context = new DefaultHttpContext { RequestServices = scope.ServiceProvider };
@@ -199,16 +222,27 @@ public sealed class PlatformAuthenticationServiceCollectionExtensionsTests
         accessor.HttpContext = context;
         try
         {
-            var authentication = await context.AuthenticateAsync(JwtBearerDefaults.AuthenticationScheme);
+            var authentication = await context.AuthenticateAsync(
+                JwtBearerDefaults.AuthenticationScheme
+            );
             authentication.Succeeded.ShouldBeTrue();
             context.User = authentication.Principal!;
             var identity = scope.ServiceProvider.GetRequiredService<IIdentityContext>();
-            identity.TenantId.ShouldBe(repeatTenant || string.IsNullOrWhiteSpace(tenantId) ? null : tenantId);
+            identity.TenantId.ShouldBe(
+                repeatTenant || string.IsNullOrWhiteSpace(tenantId) ? null : tenantId
+            );
             var authorization = provider.GetRequiredService<IAuthorizationService>();
 
-            var scopeResult = await authorization.AuthorizeAsync(context.User, resource: null,
-                OAuthAuthorizationPolicies.ForScope("resource.read"));
-            var tenantResult = await authorization.AuthorizeAsync(context.User, resource: null, "tenant-access");
+            var scopeResult = await authorization.AuthorizeAsync(
+                context.User,
+                resource: null,
+                OAuthAuthorizationPolicies.ForScope("resource.read")
+            );
+            var tenantResult = await authorization.AuthorizeAsync(
+                context.User,
+                resource: null,
+                "tenant-access"
+            );
 
             scopeResult.Succeeded.ShouldBeTrue();
             tenantResult.Succeeded.ShouldBe(expectedAuthorization);
@@ -227,7 +261,11 @@ public sealed class PlatformAuthenticationServiceCollectionExtensionsTests
     [InlineData("customer-a", false, true, false)]
     [InlineData(null, true, false, true)]
     public async Task JwtBearer_UserTenantAuthorization_UsesConfigAndPreservesServiceTokens(
-        string? tenantId, bool serviceToken, bool repeatTenant, bool expected)
+        string? tenantId,
+        bool serviceToken,
+        bool repeatTenant,
+        bool expected
+    )
     {
         // Arrange — JWT подписан, discovery/JWKS заданы локально без сетевого Identity.
         using var rsa = RSA.Create(2048);
@@ -242,14 +280,16 @@ public sealed class PlatformAuthenticationServiceCollectionExtensionsTests
         services.AddSingleton<IConfiguration>(configuration);
         services.AddPlatformAuthentication(configuration, new TestHostEnvironment("Production"));
         services.AddUserTenantAuthorization();
-        services.Configure<JwtBearerOptions>(JwtBearerDefaults.AuthenticationScheme,
-            options => options.Configuration = metadata);
+        services.Configure<JwtBearerOptions>(
+            JwtBearerDefaults.AuthenticationScheme,
+            options => options.Configuration = metadata
+        );
         services.AddAuthorization(options => options.AddScopePolicy("resource.read"));
         var claims = new List<Claim>
         {
             new("sub", serviceToken ? "django" : "user-1"),
             new("client_id", serviceToken ? "django" : "mobile-app"),
-            new("scope", "resource.read")
+            new("scope", "resource.read"),
         };
         if (tenantId is not null)
         {
@@ -258,25 +298,32 @@ public sealed class PlatformAuthenticationServiceCollectionExtensionsTests
                 claims.Add(new Claim("tenant_id", tenantId));
         }
 
-        var token = new JsonWebTokenHandler().CreateToken(new SecurityTokenDescriptor
-        {
-            Issuer = Authority,
-            Audience = Audience,
-            Subject = new ClaimsIdentity(claims),
-            SigningCredentials = new SigningCredentials(key, SecurityAlgorithms.RsaSha256),
-            TokenType = OAuthTokenDefaults.AccessTokenType,
-            Expires = DateTime.UtcNow.AddMinutes(5)
-        });
+        var token = new JsonWebTokenHandler().CreateToken(
+            new SecurityTokenDescriptor
+            {
+                Issuer = Authority,
+                Audience = Audience,
+                Subject = new ClaimsIdentity(claims),
+                SigningCredentials = new SigningCredentials(key, SecurityAlgorithms.RsaSha256),
+                TokenType = OAuthTokenDefaults.AccessTokenType,
+                Expires = DateTime.UtcNow.AddMinutes(5),
+            }
+        );
         await using var provider = services.BuildServiceProvider();
         await using var scope = provider.CreateAsyncScope();
         var context = new DefaultHttpContext { RequestServices = scope.ServiceProvider };
         context.Request.Headers.Authorization = "Bearer " + token;
 
         // Act
-        var authentication = await context.AuthenticateAsync(JwtBearerDefaults.AuthenticationScheme);
+        var authentication = await context.AuthenticateAsync(
+            JwtBearerDefaults.AuthenticationScheme
+        );
         var authorization = provider.GetRequiredService<IAuthorizationService>();
-        var result = await authorization.AuthorizeAsync(authentication.Principal!, resource: null,
-            OAuthAuthorizationPolicies.ForScope("resource.read"));
+        var result = await authorization.AuthorizeAsync(
+            authentication.Principal!,
+            resource: null,
+            OAuthAuthorizationPolicies.ForScope("resource.read")
+        );
 
         // Assert — tenant влияет на authorization, а не на успешность проверки JWT.
         authentication.Succeeded.ShouldBeTrue();
@@ -286,23 +333,29 @@ public sealed class PlatformAuthenticationServiceCollectionExtensionsTests
     private static IConfiguration CreateConfiguration(
         string authority = Authority,
         bool requireHttpsMetadata = true,
-        int clockSkewSeconds = 30) =>
+        int clockSkewSeconds = 30
+    ) =>
         new ConfigurationBuilder()
-            .AddInMemoryCollection(new Dictionary<string, string?>
-            {
-                [$"{PlatformAuthenticationOptions.SectionName}:Authority"] = authority,
-                [$"{PlatformAuthenticationOptions.SectionName}:Audience"] = Audience,
-                [$"{PlatformAuthenticationOptions.SectionName}:RequireHttpsMetadata"] =
-                    requireHttpsMetadata.ToString(),
-                [$"{PlatformAuthenticationOptions.SectionName}:ClockSkewSeconds"] =
-                    clockSkewSeconds.ToString(System.Globalization.CultureInfo.InvariantCulture)
-            })
+            .AddInMemoryCollection(
+                new Dictionary<string, string?>
+                {
+                    [$"{PlatformAuthenticationOptions.SectionName}:Authority"] = authority,
+                    [$"{PlatformAuthenticationOptions.SectionName}:Audience"] = Audience,
+                    [$"{PlatformAuthenticationOptions.SectionName}:RequireHttpsMetadata"] =
+                        requireHttpsMetadata.ToString(),
+                    [$"{PlatformAuthenticationOptions.SectionName}:ClockSkewSeconds"] =
+                        clockSkewSeconds.ToString(
+                            System.Globalization.CultureInfo.InvariantCulture
+                        ),
+                }
+            )
             .Build();
 
     private sealed class TestHostEnvironment(string environmentName) : IHostEnvironment
     {
         public string EnvironmentName { get; set; } = environmentName;
-        public string ApplicationName { get; set; } = nameof(MonixOne.Security.Authentication.Tests);
+        public string ApplicationName { get; set; } =
+            nameof(MonixOne.Security.Authentication.Tests);
         public string ContentRootPath { get; set; } = AppContext.BaseDirectory;
         public IFileProvider ContentRootFileProvider { get; set; } = new NullFileProvider();
     }

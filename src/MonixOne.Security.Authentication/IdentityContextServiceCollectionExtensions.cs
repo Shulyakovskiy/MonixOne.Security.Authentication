@@ -17,8 +17,9 @@ public static class IdentityContextServiceCollectionExtensions
 
         services.AddHttpContextAccessor();
         services.TryAddScoped<IdentityContext>();
-        services.TryAddScoped<IIdentityContext>(
-            static serviceProvider => serviceProvider.GetRequiredService<IdentityContext>());
+        services.TryAddScoped<IIdentityContext>(static serviceProvider =>
+            serviceProvider.GetRequiredService<IdentityContext>()
+        );
 
         return services;
     }

@@ -26,9 +26,7 @@ public static class OAuthAuthorizationPolicies
         ArgumentNullException.ThrowIfNull(options);
         ArgumentException.ThrowIfNullOrWhiteSpace(scope);
 
-        options.AddPolicy(
-            ForScope(scope),
-            policy => policy.RequireScope(scope));
+        options.AddPolicy(ForScope(scope), policy => policy.RequireScope(scope));
     }
 
     /// <summary>
@@ -36,7 +34,8 @@ public static class OAuthAuthorizationPolicies
     /// </summary>
     public static AuthorizationPolicyBuilder RequireScope(
         this AuthorizationPolicyBuilder policy,
-        string scope)
+        string scope
+    )
     {
         ArgumentNullException.ThrowIfNull(policy);
         ArgumentException.ThrowIfNullOrWhiteSpace(scope);
@@ -52,13 +51,16 @@ public static class OAuthAuthorizationPolicies
     /// </summary>
     public static AuthorizationPolicyBuilder RequireTenant(
         this AuthorizationPolicyBuilder policy,
-        string tenantId)
+        string tenantId
+    )
     {
         ArgumentNullException.ThrowIfNull(policy);
         ArgumentException.ThrowIfNullOrWhiteSpace(tenantId);
 
         return policy
             .RequireAuthenticatedUser()
-            .RequireAssertion(context => string.Equals(context.User.GetTenantId(), tenantId, StringComparison.Ordinal));
+            .RequireAssertion(context =>
+                string.Equals(context.User.GetTenantId(), tenantId, StringComparison.Ordinal)
+            );
     }
 }

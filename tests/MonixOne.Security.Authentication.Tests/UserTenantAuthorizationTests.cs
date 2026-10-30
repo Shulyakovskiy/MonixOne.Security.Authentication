@@ -22,7 +22,11 @@ public sealed class UserTenantAuthorizationTests
     [InlineData("MBR", null, false)]
     [InlineData("mbr", "mbr", false)]
     [InlineData("mbr", "lkb", false)]
-    public async Task UserToken_RequiresSingleConfiguredTenant(string? tenant, string? secondTenant, bool expected)
+    public async Task UserToken_RequiresSingleConfiguredTenant(
+        string? tenant,
+        string? secondTenant,
+        bool expected
+    )
     {
         // Arrange
         await using var provider = CreateProvider("mbr", "lkb");
@@ -34,7 +38,8 @@ public sealed class UserTenantAuthorizationTests
         var principal = new ClaimsPrincipal(new ClaimsIdentity(claims, "Test"));
 
         // Act
-        var result = await provider.GetRequiredService<IAuthorizationService>()
+        var result = await provider
+            .GetRequiredService<IAuthorizationService>()
             .AuthorizeAsync(principal, resource: null, OAuthAuthorizationPolicies.ForScope(Scope));
 
         // Assert
@@ -45,7 +50,11 @@ public sealed class UserTenantAuthorizationTests
     [InlineData("customer-a", "customer-a", true)]
     [InlineData("customer-a", "mbr", false)]
     [InlineData("mbr", "lkb", false)]
-    public async Task TenantAuthorization_UsesConfiguredAllowList(string configuredTenant, string tokenTenant, bool expected)
+    public async Task TenantAuthorization_UsesConfiguredAllowList(
+        string configuredTenant,
+        string tokenTenant,
+        bool expected
+    )
     {
         // Arrange
         await using var provider = CreateProvider(configuredTenant);
@@ -54,7 +63,8 @@ public sealed class UserTenantAuthorizationTests
         var principal = new ClaimsPrincipal(new ClaimsIdentity(claims, "Test"));
 
         // Act
-        var result = await provider.GetRequiredService<IAuthorizationService>()
+        var result = await provider
+            .GetRequiredService<IAuthorizationService>()
             .AuthorizeAsync(principal, resource: null, OAuthAuthorizationPolicies.ForScope(Scope));
 
         // Assert
@@ -68,15 +78,20 @@ public sealed class UserTenantAuthorizationTests
     {
         // Arrange
         await using var provider = CreateProvider("customer-a");
-        var principal = new ClaimsPrincipal(new ClaimsIdentity(
-        [
-            new Claim("sub", clientId),
-            new Claim("client_id", clientId),
-            new Claim("scope", Scope)
-        ], "Test"));
+        var principal = new ClaimsPrincipal(
+            new ClaimsIdentity(
+                [
+                    new Claim("sub", clientId),
+                    new Claim("client_id", clientId),
+                    new Claim("scope", Scope),
+                ],
+                "Test"
+            )
+        );
 
         // Act
-        var result = await provider.GetRequiredService<IAuthorizationService>()
+        var result = await provider
+            .GetRequiredService<IAuthorizationService>()
             .AuthorizeAsync(principal, resource: null, OAuthAuthorizationPolicies.ForScope(Scope));
 
         // Assert
@@ -87,7 +102,10 @@ public sealed class UserTenantAuthorizationTests
     [InlineData("django", null)]
     [InlineData("django", "mobile-app")]
     [InlineData("", "")]
-    public async Task WithoutTenant_RequiresUnambiguousServiceIdentity(string subject, string? clientId)
+    public async Task WithoutTenant_RequiresUnambiguousServiceIdentity(
+        string subject,
+        string? clientId
+    )
     {
         // Arrange
         await using var provider = CreateProvider("mbr");
@@ -97,7 +115,8 @@ public sealed class UserTenantAuthorizationTests
         var principal = new ClaimsPrincipal(new ClaimsIdentity(claims, "Test"));
 
         // Act
-        var result = await provider.GetRequiredService<IAuthorizationService>()
+        var result = await provider
+            .GetRequiredService<IAuthorizationService>()
             .AuthorizeAsync(principal, resource: null, OAuthAuthorizationPolicies.ForScope(Scope));
 
         // Assert
@@ -111,16 +130,21 @@ public sealed class UserTenantAuthorizationTests
     {
         // Arrange
         await using var provider = CreateProvider("mbr");
-        var principal = new ClaimsPrincipal(new ClaimsIdentity(
-        [
-            new Claim("sub", "django"),
-            new Claim("client_id", "django"),
-            new Claim(repeatedClaim, "django"),
-            new Claim("scope", Scope)
-        ], "Test"));
+        var principal = new ClaimsPrincipal(
+            new ClaimsIdentity(
+                [
+                    new Claim("sub", "django"),
+                    new Claim("client_id", "django"),
+                    new Claim(repeatedClaim, "django"),
+                    new Claim("scope", Scope),
+                ],
+                "Test"
+            )
+        );
 
         // Act
-        var result = await provider.GetRequiredService<IAuthorizationService>()
+        var result = await provider
+            .GetRequiredService<IAuthorizationService>()
             .AuthorizeAsync(principal, resource: null, OAuthAuthorizationPolicies.ForScope(Scope));
 
         // Assert
@@ -130,20 +154,28 @@ public sealed class UserTenantAuthorizationTests
     [Theory]
     [InlineData("user-1", "mobile-app")]
     [InlineData("django", "django")]
-    public async Task WithoutRequiredScope_TenantHandlerDoesNotGrantAccess(string subject, string clientId)
+    public async Task WithoutRequiredScope_TenantHandlerDoesNotGrantAccess(
+        string subject,
+        string clientId
+    )
     {
         // Arrange
         await using var provider = CreateProvider("mbr");
-        var principal = new ClaimsPrincipal(new ClaimsIdentity(
-        [
-            new Claim("sub", subject),
-            new Claim("client_id", clientId),
-            new Claim("tenant_id", "mbr"),
-            new Claim("scope", "resource.write")
-        ], "Test"));
+        var principal = new ClaimsPrincipal(
+            new ClaimsIdentity(
+                [
+                    new Claim("sub", subject),
+                    new Claim("client_id", clientId),
+                    new Claim("tenant_id", "mbr"),
+                    new Claim("scope", "resource.write"),
+                ],
+                "Test"
+            )
+        );
 
         // Act
-        var result = await provider.GetRequiredService<IAuthorizationService>()
+        var result = await provider
+            .GetRequiredService<IAuthorizationService>()
             .AuthorizeAsync(principal, resource: null, OAuthAuthorizationPolicies.ForScope(Scope));
 
         // Assert
@@ -153,14 +185,20 @@ public sealed class UserTenantAuthorizationTests
     [Theory]
     [InlineData(false, true)]
     [InlineData(true, false)]
-    public async Task PermissivePolicy_ChecksTenantOnlyForAuthenticatedUser(bool authenticated, bool expected)
+    public async Task PermissivePolicy_ChecksTenantOnlyForAuthenticatedUser(
+        bool authenticated,
+        bool expected
+    )
     {
         // Arrange — чужая policy не может отменить Fail, а аноним не получает tenant-требование.
         await using var provider = CreateProvider("mbr");
-        var principal = new ClaimsPrincipal(new ClaimsIdentity(UserClaims(), authenticated ? "Test" : null));
+        var principal = new ClaimsPrincipal(
+            new ClaimsIdentity(UserClaims(), authenticated ? "Test" : null)
+        );
 
         // Act
-        var result = await provider.GetRequiredService<IAuthorizationService>()
+        var result = await provider
+            .GetRequiredService<IAuthorizationService>()
             .AuthorizeAsync(principal, resource: null, "permissive");
 
         // Assert
@@ -172,19 +210,18 @@ public sealed class UserTenantAuthorizationTests
     {
         // Arrange
         await using var provider = CreateProvider("mbr");
-        var principal = new ClaimsPrincipal(
-        [
+        var principal = new ClaimsPrincipal([
             new ClaimsIdentity(UserClaims(), "Test"),
-            new ClaimsIdentity(
-            [
+            new ClaimsIdentity([
                 new Claim("tenant_id", "mbr"),
                 new Claim("sub", "django"),
-                new Claim("client_id", "django")
-            ])
+                new Claim("client_id", "django"),
+            ]),
         ]);
 
         // Act
-        var result = await provider.GetRequiredService<IAuthorizationService>()
+        var result = await provider
+            .GetRequiredService<IAuthorizationService>()
             .AuthorizeAsync(principal, resource: null, OAuthAuthorizationPolicies.ForScope(Scope));
 
         // Assert
@@ -203,21 +240,23 @@ public sealed class UserTenantAuthorizationTests
         var principal = new ClaimsPrincipal(new ClaimsIdentity(claims, "Test"));
 
         // Act
-        var result = await provider.GetRequiredService<IAuthorizationService>()
+        var result = await provider
+            .GetRequiredService<IAuthorizationService>()
             .AuthorizeAsync(principal, resource: null, OAuthAuthorizationPolicies.ForScope(Scope));
 
         // Assert
         result.Succeeded.ShouldBeFalse();
     }
 
-    public static TheoryData<string[]> InvalidAllowLists => new()
-    {
-        Array.Empty<string>(),
-        new[] { "" },
-        new[] { " " },
-        new[] { "mbr", "mbr" },
-        new[] { "mbr", "" }
-    };
+    public static TheoryData<string[]> InvalidAllowLists =>
+        new()
+        {
+            Array.Empty<string>(),
+            new[] { "" },
+            new[] { " " },
+            new[] { "mbr", "mbr" },
+            new[] { "mbr", "" },
+        };
 
     [Theory]
     [MemberData(nameof(InvalidAllowLists))]
@@ -228,10 +267,13 @@ public sealed class UserTenantAuthorizationTests
 
         // Act
         var exception = Should.Throw<OptionsValidationException>(() =>
-            provider.GetRequiredService<IStartupValidator>().Validate());
+            provider.GetRequiredService<IStartupValidator>().Validate()
+        );
 
         // Assert
-        exception.Failures.ShouldContain(failure => failure.Contains("Identity:AllowedUserTenants", StringComparison.Ordinal));
+        exception.Failures.ShouldContain(failure =>
+            failure.Contains("Identity:AllowedUserTenants", StringComparison.Ordinal)
+        );
     }
 
     [Fact]
@@ -245,16 +287,14 @@ public sealed class UserTenantAuthorizationTests
     }
 
     private static List<Claim> UserClaims() =>
-    [
-        new("sub", "user-1"),
-        new("client_id", "mobile-app"),
-        new("scope", Scope)
-    ];
+        [new("sub", "user-1"), new("client_id", "mobile-app"), new("scope", Scope)];
 
     private static ServiceProvider CreateProvider(params string[] tenants)
     {
-        var values = tenants.Select((tenant, index) =>
-            new KeyValuePair<string, string?>($"Identity:AllowedUserTenants:{index}", tenant));
+        var values = tenants.Select(
+            (tenant, index) =>
+                new KeyValuePair<string, string?>($"Identity:AllowedUserTenants:{index}", tenant)
+        );
         var configuration = new ConfigurationBuilder().AddInMemoryCollection(values).Build();
         var services = new ServiceCollection();
         services.AddLogging();

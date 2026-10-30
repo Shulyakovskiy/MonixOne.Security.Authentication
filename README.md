@@ -309,3 +309,22 @@ Environment: production
 ```
 
 В GitHub Environment `production` требуется secret `NUGET_USER` с именем владельца NuGet.org. При повторной публикации существующей версии `--skip-duplicate` не создаёт новый пакет; перед релизом увеличьте `Version`.
+
+## Browser login CORS
+
+For credentialed browser OTP/session calls from a separate SPA origin:
+
+```csharp
+services.AddBrowserLoginCors(configuration);
+// After routing, before authentication and tenant selection:
+app.UseBrowserLoginCors();
+```
+
+```json
+{ "Cors": { "Origins": ["https://localhost:8443"] } }
+```
+
+The policy permits POST, Content-Type and credentials only for the configured
+origins. An absent list denies cross-origin access; wildcard plus credentials
+is rejected by ASP.NET Core. This extension does not register JWT schemes,
+YARP, browser sessions or login UI. Origins remain owned by the host config.

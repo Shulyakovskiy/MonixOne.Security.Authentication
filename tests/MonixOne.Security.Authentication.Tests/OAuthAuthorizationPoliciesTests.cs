@@ -29,7 +29,8 @@ public sealed class OAuthAuthorizationPoliciesTests
         var result = await authorization.AuthorizeAsync(
             principal,
             resource: null,
-            OAuthAuthorizationPolicies.ForScope(RequiredScope));
+            OAuthAuthorizationPolicies.ForScope(RequiredScope)
+        );
 
         // Assert
         result.Succeeded.ShouldBeTrue();
@@ -50,7 +51,8 @@ public sealed class OAuthAuthorizationPoliciesTests
         var result = await authorization.AuthorizeAsync(
             principal,
             resource: null,
-            OAuthAuthorizationPolicies.ForScope(RequiredScope));
+            OAuthAuthorizationPolicies.ForScope(RequiredScope)
+        );
 
         // Assert
         result.Succeeded.ShouldBeFalse();
@@ -72,15 +74,17 @@ public sealed class OAuthAuthorizationPoliciesTests
         bool isAuthenticated,
         string? tenantId,
         string? secondTenantId,
-        bool expected)
+        bool expected
+    )
     {
         await using var provider = CreateServiceProvider();
         var authorization = provider.GetRequiredService<IAuthorizationService>();
         var claims = new[] { tenantId, secondTenantId }
             .Where(value => value is not null)
             .Select(value => new Claim(OAuthTokenDefaults.TenantIdClaim, value!));
-        var principal = new ClaimsPrincipal(new ClaimsIdentity(
-            claims, authenticationType: isAuthenticated ? "Test" : null));
+        var principal = new ClaimsPrincipal(
+            new ClaimsIdentity(claims, authenticationType: isAuthenticated ? "Test" : null)
+        );
 
         var result = await authorization.AuthorizeAsync(principal, resource: null, TenantPolicy);
 
@@ -91,17 +95,29 @@ public sealed class OAuthAuthorizationPoliciesTests
     [InlineData("resource.read", "lkb", true)]
     [InlineData("resource.read", "mbr", false)]
     [InlineData("resource.write", "lkb", false)]
-    public async Task TenantScopePolicy_RequiresBothScopeAndTenant(string scope, string tenantId, bool expected)
+    public async Task TenantScopePolicy_RequiresBothScopeAndTenant(
+        string scope,
+        string tenantId,
+        bool expected
+    )
     {
         await using var provider = CreateServiceProvider();
         var authorization = provider.GetRequiredService<IAuthorizationService>();
-        var principal = new ClaimsPrincipal(new ClaimsIdentity(
-        [
-            new Claim(OAuthTokenDefaults.ScopeClaim, scope),
-            new Claim(OAuthTokenDefaults.TenantIdClaim, tenantId)
-        ], authenticationType: "Test"));
+        var principal = new ClaimsPrincipal(
+            new ClaimsIdentity(
+                [
+                    new Claim(OAuthTokenDefaults.ScopeClaim, scope),
+                    new Claim(OAuthTokenDefaults.TenantIdClaim, tenantId),
+                ],
+                authenticationType: "Test"
+            )
+        );
 
-        var result = await authorization.AuthorizeAsync(principal, resource: null, TenantScopePolicy);
+        var result = await authorization.AuthorizeAsync(
+            principal,
+            resource: null,
+            TenantScopePolicy
+        );
 
         result.Succeeded.ShouldBe(expected);
     }
@@ -111,10 +127,9 @@ public sealed class OAuthAuthorizationPoliciesTests
     {
         await using var provider = CreateServiceProvider();
         var authorization = provider.GetRequiredService<IAuthorizationService>();
-        var principal = new ClaimsPrincipal(
-        [
+        var principal = new ClaimsPrincipal([
             new ClaimsIdentity(authenticationType: "Test"),
-            new ClaimsIdentity([new Claim(OAuthTokenDefaults.TenantIdClaim, RequiredTenant)])
+            new ClaimsIdentity([new Claim(OAuthTokenDefaults.TenantIdClaim, RequiredTenant)]),
         ]);
 
         var result = await authorization.AuthorizeAsync(principal, resource: null, TenantPolicy);
@@ -129,8 +144,9 @@ public sealed class OAuthAuthorizationPoliciesTests
     {
         await using var provider = CreateServiceProvider();
         var authorization = provider.GetRequiredService<IAuthorizationService>();
-        var principal = new ClaimsPrincipal(new ClaimsIdentity(
-            [new Claim(claimType, RequiredTenant)], authenticationType: "Test"));
+        var principal = new ClaimsPrincipal(
+            new ClaimsIdentity([new Claim(claimType, RequiredTenant)], authenticationType: "Test")
+        );
 
         var result = await authorization.AuthorizeAsync(principal, resource: null, TenantPolicy);
 
@@ -156,16 +172,19 @@ public sealed class OAuthAuthorizationPoliciesTests
         {
             options.AddScopePolicy(RequiredScope);
             options.AddPolicy(TenantPolicy, policy => policy.RequireTenant(RequiredTenant));
-            options.AddPolicy(TenantScopePolicy, policy => policy
-                .RequireScope(RequiredScope)
-                .RequireTenant(RequiredTenant));
+            options.AddPolicy(
+                TenantScopePolicy,
+                policy => policy.RequireScope(RequiredScope).RequireTenant(RequiredTenant)
+            );
         });
         return services.BuildServiceProvider();
     }
 
     private static ClaimsPrincipal CreatePrincipal(string scope) =>
-        new(new ClaimsIdentity(
-        [
-            new Claim(OAuthTokenDefaults.ScopeClaim, scope)
-        ], authenticationType: "Test"));
+        new(
+            new ClaimsIdentity(
+                [new Claim(OAuthTokenDefaults.ScopeClaim, scope)],
+                authenticationType: "Test"
+            )
+        );
 }

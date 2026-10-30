@@ -20,15 +20,18 @@ public static class PlatformAuthenticationServiceCollectionExtensions
     public static IServiceCollection AddPlatformAuthentication(
         this IServiceCollection services,
         IConfiguration configuration,
-        IHostEnvironment environment)
+        IHostEnvironment environment
+    )
     {
         ArgumentNullException.ThrowIfNull(services);
         ArgumentNullException.ThrowIfNull(configuration);
         ArgumentNullException.ThrowIfNull(environment);
 
-        var options = configuration
-            .GetSection(PlatformAuthenticationOptions.SectionName)
-            .Get<PlatformAuthenticationOptions>() ?? new PlatformAuthenticationOptions();
+        var options =
+            configuration
+                .GetSection(PlatformAuthenticationOptions.SectionName)
+                .Get<PlatformAuthenticationOptions>()
+            ?? new PlatformAuthenticationOptions();
         ValidateOrThrow(options, environment);
 
         services.AddIdentityContext();
@@ -54,7 +57,7 @@ public static class PlatformAuthenticationServiceCollectionExtensions
                     ValidateIssuerSigningKey = true,
                     ValidateLifetime = true,
                     ValidAudience = options.Audience,
-                    ValidTypes = [OAuthTokenDefaults.AccessTokenType]
+                    ValidTypes = [OAuthTokenDefaults.AccessTokenType],
                 };
             });
 
@@ -63,31 +66,35 @@ public static class PlatformAuthenticationServiceCollectionExtensions
 
     private static void ValidateOrThrow(
         PlatformAuthenticationOptions options,
-        IHostEnvironment environment)
+        IHostEnvironment environment
+    )
     {
         var failures = new List<string>();
-        var authorityIsValid = Uri.TryCreate(options.Authority, UriKind.Absolute, out var authority)
-                               && (authority.Scheme == Uri.UriSchemeHttps
-                                   || authority.Scheme == Uri.UriSchemeHttp)
-                               && !string.IsNullOrWhiteSpace(authority.Host)
-                               && string.IsNullOrEmpty(authority.UserInfo)
-                               && string.IsNullOrEmpty(authority.Query)
-                               && string.IsNullOrEmpty(authority.Fragment);
+        var authorityIsValid =
+            Uri.TryCreate(options.Authority, UriKind.Absolute, out var authority)
+            && (authority.Scheme == Uri.UriSchemeHttps || authority.Scheme == Uri.UriSchemeHttp)
+            && !string.IsNullOrWhiteSpace(authority.Host)
+            && string.IsNullOrEmpty(authority.UserInfo)
+            && string.IsNullOrEmpty(authority.Query)
+            && string.IsNullOrEmpty(authority.Fragment);
         if (!authorityIsValid)
         {
             failures.Add(
-                "Параметр 'Identity:Authority' должен быть абсолютным HTTP/HTTPS URL без user info, query-параметров и fragment.");
+                "Параметр 'Identity:Authority' должен быть абсолютным HTTP/HTTPS URL без user info, query-параметров и fragment."
+            );
         }
         else if (options.RequireHttpsMetadata && authority!.Scheme != Uri.UriSchemeHttps)
         {
             failures.Add(
-                "Параметр 'Identity:Authority' должен использовать HTTPS, когда 'Identity:RequireHttpsMetadata' включён.");
+                "Параметр 'Identity:Authority' должен использовать HTTPS, когда 'Identity:RequireHttpsMetadata' включён."
+            );
         }
 
         if (!options.RequireHttpsMetadata && !environment.IsEnvironment("Local"))
         {
             failures.Add(
-                "Параметр 'Identity:RequireHttpsMetadata' можно отключать только в окружении Local.");
+                "Параметр 'Identity:RequireHttpsMetadata' можно отключать только в окружении Local."
+            );
         }
 
         if (string.IsNullOrWhiteSpace(options.Audience))
@@ -96,7 +103,8 @@ public static class PlatformAuthenticationServiceCollectionExtensions
         if (options.ClockSkewSeconds is < 0 or > MaximumClockSkewSeconds)
         {
             failures.Add(
-                $"Параметр 'Identity:ClockSkewSeconds' должен быть в диапазоне от 0 до {MaximumClockSkewSeconds} секунд.");
+                $"Параметр 'Identity:ClockSkewSeconds' должен быть в диапазоне от 0 до {MaximumClockSkewSeconds} секунд."
+            );
         }
 
         if (failures.Count != 0)
@@ -104,7 +112,8 @@ public static class PlatformAuthenticationServiceCollectionExtensions
             throw new OptionsValidationException(
                 PlatformAuthenticationOptions.SectionName,
                 typeof(PlatformAuthenticationOptions),
-                failures);
+                failures
+            );
         }
     }
 }
