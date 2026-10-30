@@ -24,7 +24,8 @@ public static class ServiceClientServiceCollectionExtensions
         this IServiceCollection services,
         IConfiguration configuration,
         IConfiguration? identityConfiguration,
-        Action<ServiceClientRegistrar> registerContracts)
+        Action<ServiceClientRegistrar> registerContracts
+    )
     {
         ArgumentNullException.ThrowIfNull(services);
         ArgumentNullException.ThrowIfNull(configuration);
@@ -37,11 +38,16 @@ public static class ServiceClientServiceCollectionExtensions
         // Bind each service directly so invalid values cannot be silently skipped by array binding.
         var options = new ServiceClientsOptions
         {
-            Services = section.GetSection(nameof(ServiceClientsOptions.Services))
+            Services = section
+                .GetSection(nameof(ServiceClientsOptions.Services))
                 .GetChildren()
-                .Select(service => service.Get<ServiceClientOptions>()
-                    ?? throw new InvalidOperationException($"Секция '{service.Path}' должна содержать настройки сервиса."))
-                .ToArray()
+                .Select(service =>
+                    service.Get<ServiceClientOptions>()
+                    ?? throw new InvalidOperationException(
+                        $"Секция '{service.Path}' должна содержать настройки сервиса."
+                    )
+                )
+                .ToArray(),
         };
         if (!options.HasServices)
             return services;
@@ -54,28 +60,35 @@ public static class ServiceClientServiceCollectionExtensions
             options,
             section.GetSection(ServiceClientsOptions.ResilienceSectionName),
             services.AddClientCredentialsTokenManagement,
-            () => CreateClientCredentialsOptions(identityConfiguration));
+            () => CreateClientCredentialsOptions(identityConfiguration)
+        );
 
         registerContracts(registrar);
         return services;
     }
 
     private static ClientCredentialsClient CreateClientCredentialsOptions(
-        IConfiguration? identityConfiguration)
+        IConfiguration? identityConfiguration
+    )
     {
         ArgumentNullException.ThrowIfNull(identityConfiguration);
 
         var authority = identityConfiguration["Authority"];
-        if (!Uri.TryCreate(authority, UriKind.Absolute, out var authorityUri)
-            || (authorityUri.Scheme != Uri.UriSchemeHttp
-                && authorityUri.Scheme != Uri.UriSchemeHttps)
+        if (
+            !Uri.TryCreate(authority, UriKind.Absolute, out var authorityUri)
+            || (
+                authorityUri.Scheme != Uri.UriSchemeHttp
+                && authorityUri.Scheme != Uri.UriSchemeHttps
+            )
             || string.IsNullOrWhiteSpace(authorityUri.Host)
             || !string.IsNullOrEmpty(authorityUri.UserInfo)
             || !string.IsNullOrEmpty(authorityUri.Query)
-            || !string.IsNullOrEmpty(authorityUri.Fragment))
+            || !string.IsNullOrEmpty(authorityUri.Fragment)
+        )
         {
             throw new InvalidOperationException(
-                "Identity:Authority должен быть абсолютным HTTP(S) URI без user info, query-параметров и fragment.");
+                "Identity:Authority должен быть абсолютным HTTP(S) URI без user info, query-параметров и fragment."
+            );
         }
 
         var clientId = identityConfiguration["ClientId"];
@@ -88,10 +101,13 @@ public static class ServiceClientServiceCollectionExtensions
 
         return new ClientCredentialsClient
         {
-            TokenEndpoint = new Uri($"{authorityUri.AbsoluteUri.TrimEnd('/')}/connect/token", UriKind.Absolute),
+            TokenEndpoint = new Uri(
+                $"{authorityUri.AbsoluteUri.TrimEnd('/')}/connect/token",
+                UriKind.Absolute
+            ),
             ClientId = ClientId.Parse(clientId),
             ClientSecret = ClientSecret.Parse(clientSecret),
-            ClientCredentialStyle = ClientCredentialStyle.PostBody
+            ClientCredentialStyle = ClientCredentialStyle.PostBody,
         };
     }
 }
@@ -115,7 +131,8 @@ public sealed class ServiceClientRegistrar
         ServiceClientsOptions serviceClients,
         IConfigurationSection resilienceSection,
         Func<ClientCredentialsTokenManagementBuilder> createTokenManagement,
-        Func<ClientCredentialsClient> createClientCredentials)
+        Func<ClientCredentialsClient> createClientCredentials
+    )
     {
         _services = services;
         _serviceClients = serviceClients;
@@ -143,14 +160,17 @@ public sealed class ServiceClientRegistrar
             if (_registeredGroups.Add(service.Group))
             {
                 var credentials = _clientCredentials ??= _createClientCredentials();
-                (_tokenManagement ??= _createTokenManagement()).AddClient(tokenClientName, client =>
-                {
-                    client.TokenEndpoint = credentials.TokenEndpoint;
-                    client.ClientId = credentials.ClientId;
-                    client.ClientSecret = credentials.ClientSecret;
-                    client.ClientCredentialStyle = credentials.ClientCredentialStyle;
-                    client.Scope = Scope.Parse(string.Join(' ', service.Scopes));
-                });
+                (_tokenManagement ??= _createTokenManagement()).AddClient(
+                    tokenClientName,
+                    client =>
+                    {
+                        client.TokenEndpoint = credentials.TokenEndpoint;
+                        client.ClientId = credentials.ClientId;
+                        client.ClientSecret = credentials.ClientSecret;
+                        client.ClientCredentialStyle = credentials.ClientCredentialStyle;
+                        client.Scope = Scope.Parse(string.Join(' ', service.Scopes));
+                    }
+                );
             }
 
             clientBuilder.AddClientCredentialsTokenHandler(tokenClientName);

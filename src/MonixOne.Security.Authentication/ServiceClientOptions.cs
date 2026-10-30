@@ -30,14 +30,13 @@ public sealed class ServiceClientsOptions
     /// <summary>
     /// Ищет настройки сервиса по группе.
     /// </summary>
-    public bool TryGetService(
-        string group,
-        [NotNullWhen(true)] out ServiceClientOptions? service)
+    public bool TryGetService(string group, [NotNullWhen(true)] out ServiceClientOptions? service)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(group);
 
         service = Services.FirstOrDefault(candidate =>
-            string.Equals(candidate.Group, group, StringComparison.OrdinalIgnoreCase));
+            string.Equals(candidate.Group, group, StringComparison.OrdinalIgnoreCase)
+        );
         return service is not null;
     }
 
@@ -47,33 +46,45 @@ public sealed class ServiceClientsOptions
         foreach (var service in Services)
         {
             if (string.IsNullOrWhiteSpace(service.Group))
-                throw new InvalidOperationException("ServiceClients:Services:Group не должен быть пустым.");
+                throw new InvalidOperationException(
+                    "ServiceClients:Services:Group не должен быть пустым."
+                );
 
             if (!groups.Add(service.Group))
             {
                 throw new InvalidOperationException(
-                    $"ServiceClients содержит повторяющуюся группу '{service.Group}'.");
+                    $"ServiceClients содержит повторяющуюся группу '{service.Group}'."
+                );
             }
 
-            if (service.BaseAddress is not { IsAbsoluteUri: true }
-                || (service.BaseAddress.Scheme != Uri.UriSchemeHttp
-                    && service.BaseAddress.Scheme != Uri.UriSchemeHttps))
+            if (
+                service.BaseAddress is not { IsAbsoluteUri: true }
+                || (
+                    service.BaseAddress.Scheme != Uri.UriSchemeHttp
+                    && service.BaseAddress.Scheme != Uri.UriSchemeHttps
+                )
+            )
             {
                 throw new InvalidOperationException(
-                    $"ServiceClients:Services:BaseAddress для группы '{service.Group}' должен быть абсолютным HTTP(S) URI.");
+                    $"ServiceClients:Services:BaseAddress для группы '{service.Group}' должен быть абсолютным HTTP(S) URI."
+                );
             }
 
             if (!Enum.IsDefined(service.Authentication))
             {
                 throw new InvalidOperationException(
-                    $"ServiceClients:Services:Authentication для группы '{service.Group}' должен быть ClientCredentials или None.");
+                    $"ServiceClients:Services:Authentication для группы '{service.Group}' должен быть ClientCredentials или None."
+                );
             }
 
-            if (service.Authentication == ServiceClientAuthentication.ClientCredentials
-                && (service.Scopes.Length == 0 || service.Scopes.Any(string.IsNullOrWhiteSpace)))
+            if (
+                service.Authentication == ServiceClientAuthentication.ClientCredentials
+                && (service.Scopes.Length == 0 || service.Scopes.Any(string.IsNullOrWhiteSpace))
+            )
             {
                 throw new InvalidOperationException(
-                    $"ServiceClients:Services:Scopes для группы '{service.Group}' должен содержать хотя бы один scope.");
+                    $"ServiceClients:Services:Scopes для группы '{service.Group}' должен содержать хотя бы один scope."
+                );
             }
         }
     }
@@ -97,7 +108,8 @@ public sealed class ServiceClientOptions
     /// <summary>
     /// Режим аутентификации группы. По умолчанию используется client credentials.
     /// </summary>
-    public ServiceClientAuthentication Authentication { get; init; } = ServiceClientAuthentication.ClientCredentials;
+    public ServiceClientAuthentication Authentication { get; init; } =
+        ServiceClientAuthentication.ClientCredentials;
 
     /// <summary>
     /// OAuth scopes, обязательные для client credentials и не используемые при None.
@@ -118,5 +130,5 @@ public enum ServiceClientAuthentication
     /// <summary>
     /// Не подключать client credentials handler и не запрашивать access token.
     /// </summary>
-    None
+    None,
 }

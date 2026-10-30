@@ -58,7 +58,10 @@ public sealed class ClaimsPrincipalExtensionsTests
     }
 
     private static ClaimsPrincipal CreatePrincipal(params string[] scopes) =>
-        new(new ClaimsIdentity(
-            scopes.Select(scope => new Claim(OAuthTokenDefaults.ScopeClaim, scope)),
-            authenticationType: "Test"));
+        new(
+            new ClaimsIdentity(
+                scopes.Select(scope => new Claim(OAuthTokenDefaults.ScopeClaim, scope)),
+                authenticationType: "Test"
+            )
+        );
 }

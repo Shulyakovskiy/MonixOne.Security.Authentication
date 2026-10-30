@@ -41,9 +41,11 @@ public static class ClaimsPrincipalExtensions
     private static string? GetSingleAuthenticatedClaim(ClaimsPrincipal principal, string claimType)
     {
         string? value = null;
-        foreach (var claim in principal.Identities
-                     .Where(identity => identity.IsAuthenticated)
-                     .SelectMany(identity => identity.Claims))
+        foreach (
+            var claim in principal
+                .Identities.Where(identity => identity.IsAuthenticated)
+                .SelectMany(identity => identity.Claims)
+        )
         {
             if (!string.Equals(claim.Type, claimType, StringComparison.Ordinal))
                 continue;

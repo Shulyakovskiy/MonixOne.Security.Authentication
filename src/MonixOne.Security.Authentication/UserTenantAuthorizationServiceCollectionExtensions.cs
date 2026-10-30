@@ -21,15 +21,21 @@ public static class UserTenantAuthorizationServiceCollectionExtensions
     {
         ArgumentNullException.ThrowIfNull(services);
 
-        services.AddOptions<UserTenantAuthorizationOptions>()
+        services
+            .AddOptions<UserTenantAuthorizationOptions>()
             .BindConfiguration(PlatformAuthenticationOptions.SectionName)
-            .Validate(static options => options.AllowedUserTenants is { Length: > 0 } tenants
-                                        && tenants.All(tenant => !string.IsNullOrWhiteSpace(tenant))
-                                        && tenants.Distinct(StringComparer.Ordinal).Count() == tenants.Length,
-                "Identity:AllowedUserTenants должен содержать непустой массив уникальных непустых tenant.")
+            .Validate(
+                static options =>
+                    options.AllowedUserTenants is { Length: > 0 } tenants
+                    && tenants.All(tenant => !string.IsNullOrWhiteSpace(tenant))
+                    && tenants.Distinct(StringComparer.Ordinal).Count() == tenants.Length,
+                "Identity:AllowedUserTenants должен содержать непустой массив уникальных непустых tenant."
+            )
             .ValidateOnStart();
         services.AddAuthorization();
-        services.TryAddEnumerable(ServiceDescriptor.Singleton<IAuthorizationHandler, UserTenantAuthorizationHandler>());
+        services.TryAddEnumerable(
+            ServiceDescriptor.Singleton<IAuthorizationHandler, UserTenantAuthorizationHandler>()
+        );
 
         return services;
     }

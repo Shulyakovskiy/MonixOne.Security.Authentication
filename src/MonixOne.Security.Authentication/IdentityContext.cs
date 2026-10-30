@@ -27,8 +27,7 @@ public sealed class IdentityContext : IIdentityContext
     {
         get
         {
-            var subject = GetAuthenticatedUser()?
-                .FindFirst(OAuthTokenDefaults.SubjectClaim)?.Value;
+            var subject = GetAuthenticatedUser()?.FindFirst(OAuthTokenDefaults.SubjectClaim)?.Value;
             return string.IsNullOrWhiteSpace(subject) ? null : subject;
         }
     }
@@ -38,8 +37,9 @@ public sealed class IdentityContext : IIdentityContext
     {
         get
         {
-            var externalSubject = GetAuthenticatedUser()?
-                .FindFirst(OAuthTokenDefaults.SubjectExternalClaim)?.Value;
+            var externalSubject = GetAuthenticatedUser()
+                ?.FindFirst(OAuthTokenDefaults.SubjectExternalClaim)
+                ?.Value;
             return string.IsNullOrWhiteSpace(externalSubject) ? null : externalSubject;
         }
     }
@@ -51,17 +51,16 @@ public sealed class IdentityContext : IIdentityContext
     public IEnumerable<string> GetRoles() => GetClaimValues(OAuthTokenDefaults.RoleClaim);
 
     /// <inheritdoc />
-    public IEnumerable<string> GetScopes() => GetAuthenticatedUser() is { } user
-        ? user
-            .FindAll(OAuthTokenDefaults.ScopeClaim)
-            .SelectMany(claim => claim.Value.Split(' ', StringSplitOptions.RemoveEmptyEntries))
-            .Distinct(StringComparer.Ordinal)
-        : Enumerable.Empty<string>();
+    public IEnumerable<string> GetScopes() =>
+        GetAuthenticatedUser() is { } user
+            ? user.FindAll(OAuthTokenDefaults.ScopeClaim)
+                .SelectMany(claim => claim.Value.Split(' ', StringSplitOptions.RemoveEmptyEntries))
+                .Distinct(StringComparer.Ordinal)
+            : Enumerable.Empty<string>();
 
     private IEnumerable<string> GetClaimValues(string claimType) =>
         GetAuthenticatedUser() is { } user
-            ? user
-                .FindAll(claimType)
+            ? user.FindAll(claimType)
                 .Select(claim => claim.Value)
                 .Where(value => !string.IsNullOrWhiteSpace(value))
                 .Distinct(StringComparer.Ordinal)

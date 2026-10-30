@@ -21,7 +21,8 @@ public sealed class ServiceClientServiceCollectionExtensionsTests
         services.AddServiceClients(
             configuration.GetSection("Infrastructure"),
             configuration.GetSection("Identity"),
-            RegisterProfileContract);
+            RegisterProfileContract
+        );
 
         using var provider = services.BuildServiceProvider();
         provider.GetService<IProfileService>().ShouldBeNull();
@@ -31,15 +32,15 @@ public sealed class ServiceClientServiceCollectionExtensionsTests
     public void AddServiceClients_when_services_are_empty_does_not_register_contract()
     {
         var services = new ServiceCollection();
-        var configuration = CreateConfiguration(new Dictionary<string, string?>
-        {
-            ["Infrastructure:ServiceClients"] = string.Empty
-        });
+        var configuration = CreateConfiguration(
+            new Dictionary<string, string?> { ["Infrastructure:ServiceClients"] = string.Empty }
+        );
 
         services.AddServiceClients(
             configuration.GetRequiredSection("Infrastructure"),
             configuration.GetSection("Identity"),
-            RegisterProfileContract);
+            RegisterProfileContract
+        );
 
         using var provider = services.BuildServiceProvider();
         provider.GetService<IProfileService>().ShouldBeNull();
@@ -54,10 +55,13 @@ public sealed class ServiceClientServiceCollectionExtensionsTests
         services.AddServiceClients(
             configuration.GetRequiredSection("Infrastructure"),
             configuration.GetRequiredSection("Identity"),
-            RegisterProfileContract);
+            RegisterProfileContract
+        );
 
         using var provider = services.BuildServiceProvider();
-        var httpClient = provider.GetRequiredService<IHttpClientFactory>().CreateClient(ProfileServiceGroup.Name);
+        var httpClient = provider
+            .GetRequiredService<IHttpClientFactory>()
+            .CreateClient(ProfileServiceGroup.Name);
 
         httpClient.BaseAddress.ShouldBe(new Uri("http://profile.test:8000"));
         provider.GetRequiredService<IProfileService>().ShouldNotBeNull();
@@ -66,22 +70,27 @@ public sealed class ServiceClientServiceCollectionExtensionsTests
     [Theory]
     [InlineData(null)]
     [InlineData("ClientCredentials")]
-    public async Task AddServiceClients_uses_client_credentials_and_caches_access_token(string? authentication)
+    public async Task AddServiceClients_uses_client_credentials_and_caches_access_token(
+        string? authentication
+    )
     {
         var identityHandler = new RecordingHandler(
             """
             {"access_token":"service-access-token","expires_in":3600}
-            """);
+            """
+        );
         var profileHandler = new RecordingHandler("""{"id":"profile-1"}""");
         var services = new ServiceCollection();
         var configuration = CreateConfiguredProfileClient();
         if (authentication is not null)
-            configuration["Infrastructure:ServiceClients:Services:0:Authentication"] = authentication;
+            configuration["Infrastructure:ServiceClients:Services:0:Authentication"] =
+                authentication;
 
         services.AddServiceClients(
             configuration.GetRequiredSection("Infrastructure"),
             configuration.GetRequiredSection("Identity"),
-            RegisterProfileContract);
+            RegisterProfileContract
+        );
         services
             .AddHttpClient(ClientCredentialsTokenManagementDefaults.BackChannelHttpClientName)
             .ConfigurePrimaryHttpMessageHandler(() => identityHandler);
@@ -100,7 +109,9 @@ public sealed class ServiceClientServiceCollectionExtensionsTests
 
         identityHandler.CallCount.ShouldBe(1);
         identityHandler.Requests.Single().Method.ShouldBe(HttpMethod.Post);
-        identityHandler.Requests.Single().Uri.ShouldBe(new Uri("http://identity.test:8000/identity/connect/token"));
+        identityHandler
+            .Requests.Single()
+            .Uri.ShouldBe(new Uri("http://identity.test:8000/identity/connect/token"));
         identityHandler.Requests.Single().Body.ShouldContain("grant_type=client_credentials");
         identityHandler.Requests.Single().Body.ShouldContain("client_id=location-service");
         identityHandler.Requests.Single().Body.ShouldContain("client_secret=test-client-secret");
@@ -115,22 +126,29 @@ public sealed class ServiceClientServiceCollectionExtensionsTests
     [InlineData(false)]
     [InlineData(true)]
     public async Task AddServiceClients_with_none_calls_postgrest_without_identity_scopes_or_authorization(
-        bool passNullIdentity)
+        bool passNullIdentity
+    )
     {
-        var identityHandler = new RecordingHandler("""{"access_token":"unexpected-token","expires_in":3600}""");
+        var identityHandler = new RecordingHandler(
+            """{"access_token":"unexpected-token","expires_in":3600}"""
+        );
         var postgrestHandler = new RecordingHandler("""[{"id":1,"name":"Moscow"}]""");
         var services = new ServiceCollection();
-        var configuration = CreateConfiguration(new Dictionary<string, string?>
-        {
-            ["Infrastructure:ServiceClients:Services:0:Group"] = "postgrest",
-            ["Infrastructure:ServiceClients:Services:0:BaseAddress"] = "http://postgrest.test:3000",
-            ["Infrastructure:ServiceClients:Services:0:Authentication"] = "None"
-        });
+        var configuration = CreateConfiguration(
+            new Dictionary<string, string?>
+            {
+                ["Infrastructure:ServiceClients:Services:0:Group"] = "postgrest",
+                ["Infrastructure:ServiceClients:Services:0:BaseAddress"] =
+                    "http://postgrest.test:3000",
+                ["Infrastructure:ServiceClients:Services:0:Authentication"] = "None",
+            }
+        );
 
         services.AddServiceClients(
             configuration.GetRequiredSection("Infrastructure"),
             passNullIdentity ? null : configuration.GetSection("Identity"),
-            registrar => registrar.Add<IPostgRestService>("postgrest"));
+            registrar => registrar.Add<IPostgRestService>("postgrest")
+        );
         services
             .AddHttpClient(ClientCredentialsTokenManagementDefaults.BackChannelHttpClientName)
             .ConfigurePrimaryHttpMessageHandler(() => identityHandler);
@@ -156,15 +174,19 @@ public sealed class ServiceClientServiceCollectionExtensionsTests
     [InlineData(false)]
     [InlineData(true)]
     public async Task AddServiceClients_with_mixed_groups_only_authenticates_client_credentials_group(
-        bool anonymousFirst)
+        bool anonymousFirst
+    )
     {
-        var identityHandler = new RecordingHandler("""{"access_token":"service-access-token","expires_in":3600}""");
+        var identityHandler = new RecordingHandler(
+            """{"access_token":"service-access-token","expires_in":3600}"""
+        );
         var profileHandler = new RecordingHandler("""{"id":"profile-1"}""");
         var postgrestHandler = new RecordingHandler("""[{"id":1,"name":"Moscow"}]""");
         var services = new ServiceCollection();
         var configuration = CreateConfiguredProfileClient();
         configuration["Infrastructure:ServiceClients:Services:1:Group"] = "postgrest";
-        configuration["Infrastructure:ServiceClients:Services:1:BaseAddress"] = "http://postgrest.test:3000";
+        configuration["Infrastructure:ServiceClients:Services:1:BaseAddress"] =
+            "http://postgrest.test:3000";
         configuration["Infrastructure:ServiceClients:Services:1:Authentication"] = "None";
 
         services.AddServiceClients(
@@ -179,7 +201,8 @@ public sealed class ServiceClientServiceCollectionExtensionsTests
 
                 if (!anonymousFirst)
                     registrar.Add<IPostgRestService>("postgrest");
-            });
+            }
+        );
         services
             .AddHttpClient(ClientCredentialsTokenManagementDefaults.BackChannelHttpClientName)
             .ConfigurePrimaryHttpMessageHandler(() => identityHandler);
@@ -211,16 +234,21 @@ public sealed class ServiceClientServiceCollectionExtensionsTests
     [InlineData(null)]
     [InlineData("")]
     [InlineData(" ")]
-    public void AddServiceClients_with_client_credentials_rejects_missing_or_blank_scopes(string? scope)
+    public void AddServiceClients_with_client_credentials_rejects_missing_or_blank_scopes(
+        string? scope
+    )
     {
         var services = new ServiceCollection();
         var configuration = CreateConfiguredProfileClient();
         configuration["Infrastructure:ServiceClients:Services:0:Scopes:0"] = scope;
 
-        var exception = Should.Throw<InvalidOperationException>(() => services.AddServiceClients(
-            configuration.GetRequiredSection("Infrastructure"),
-            configuration.GetRequiredSection("Identity"),
-            RegisterProfileContract));
+        var exception = Should.Throw<InvalidOperationException>(() =>
+            services.AddServiceClients(
+                configuration.GetRequiredSection("Infrastructure"),
+                configuration.GetRequiredSection("Identity"),
+                RegisterProfileContract
+            )
+        );
 
         exception.Message.ShouldContain("Scopes");
         exception.Message.ShouldContain(ProfileServiceGroup.Name);
@@ -230,16 +258,21 @@ public sealed class ServiceClientServiceCollectionExtensionsTests
     [InlineData("Authority")]
     [InlineData("ClientId")]
     [InlineData("ClientSecret")]
-    public void AddServiceClients_with_client_credentials_rejects_missing_identity_settings(string setting)
+    public void AddServiceClients_with_client_credentials_rejects_missing_identity_settings(
+        string setting
+    )
     {
         var services = new ServiceCollection();
         var configuration = CreateConfiguredProfileClient();
         configuration[$"Identity:{setting}"] = null;
 
-        var exception = Should.Throw<InvalidOperationException>(() => services.AddServiceClients(
-            configuration.GetRequiredSection("Infrastructure"),
-            configuration.GetSection("Identity"),
-            RegisterProfileContract));
+        var exception = Should.Throw<InvalidOperationException>(() =>
+            services.AddServiceClients(
+                configuration.GetRequiredSection("Infrastructure"),
+                configuration.GetSection("Identity"),
+                RegisterProfileContract
+            )
+        );
 
         exception.Message.ShouldContain($"Identity:{setting}");
     }
@@ -250,10 +283,13 @@ public sealed class ServiceClientServiceCollectionExtensionsTests
         var services = new ServiceCollection();
         var configuration = CreateConfiguredProfileClient();
 
-        var exception = Should.Throw<ArgumentNullException>(() => services.AddServiceClients(
-            configuration.GetRequiredSection("Infrastructure"),
-            null,
-            RegisterProfileContract));
+        var exception = Should.Throw<ArgumentNullException>(() =>
+            services.AddServiceClients(
+                configuration.GetRequiredSection("Infrastructure"),
+                null,
+                RegisterProfileContract
+            )
+        );
 
         exception.ParamName.ShouldBe("identityConfiguration");
     }
@@ -267,10 +303,13 @@ public sealed class ServiceClientServiceCollectionExtensionsTests
         var configuration = CreateConfiguredProfileClient();
         configuration["Infrastructure:ServiceClients:Services:0:Authentication"] = authentication;
 
-        var exception = Should.Throw<InvalidOperationException>(() => services.AddServiceClients(
-            configuration.GetRequiredSection("Infrastructure"),
-            configuration.GetRequiredSection("Identity"),
-            RegisterProfileContract));
+        var exception = Should.Throw<InvalidOperationException>(() =>
+            services.AddServiceClients(
+                configuration.GetRequiredSection("Infrastructure"),
+                configuration.GetRequiredSection("Identity"),
+                RegisterProfileContract
+            )
+        );
 
         exception.Message.ShouldContain("Authentication");
     }
@@ -283,22 +322,24 @@ public sealed class ServiceClientServiceCollectionExtensionsTests
 
     private static IConfiguration CreateConfiguredProfileClient()
     {
-        return CreateConfiguration(new Dictionary<string, string?>
-        {
-            ["Identity:Authority"] = "http://identity.test:8000/identity",
-            ["Identity:ClientId"] = "location-service",
-            ["Identity:ClientSecret"] = "test-client-secret",
-            ["Infrastructure:ServiceClients:Services:0:Group"] = ProfileServiceGroup.Name,
-            ["Infrastructure:ServiceClients:Services:0:BaseAddress"] = "http://profile.test:8000",
-            ["Infrastructure:ServiceClients:Services:0:Scopes:0"] = "profile-service.intra_read"
-        });
+        return CreateConfiguration(
+            new Dictionary<string, string?>
+            {
+                ["Identity:Authority"] = "http://identity.test:8000/identity",
+                ["Identity:ClientId"] = "location-service",
+                ["Identity:ClientSecret"] = "test-client-secret",
+                ["Infrastructure:ServiceClients:Services:0:Group"] = ProfileServiceGroup.Name,
+                ["Infrastructure:ServiceClients:Services:0:BaseAddress"] =
+                    "http://profile.test:8000",
+                ["Infrastructure:ServiceClients:Services:0:Scopes:0"] =
+                    "profile-service.intra_read",
+            }
+        );
     }
 
     private static IConfiguration CreateConfiguration(IReadOnlyDictionary<string, string?> values)
     {
-        return new ConfigurationBuilder()
-            .AddInMemoryCollection(values)
-            .Build();
+        return new ConfigurationBuilder().AddInMemoryCollection(values).Build();
     }
 
     public interface IProfileService
@@ -310,7 +351,10 @@ public sealed class ServiceClientServiceCollectionExtensionsTests
     public interface IPostgRestService
     {
         [Get("/locations")]
-        Task<LocationResponse[]> GetLocations([AliasAs("select")] string select, CancellationToken ct);
+        Task<LocationResponse[]> GetLocations(
+            [AliasAs("select")] string select,
+            CancellationToken ct
+        );
     }
 
     private static class ProfileServiceGroup
@@ -331,20 +375,24 @@ public sealed class ServiceClientServiceCollectionExtensionsTests
 
         protected override async Task<HttpResponseMessage> SendAsync(
             HttpRequestMessage request,
-            CancellationToken ct)
+            CancellationToken ct
+        )
         {
             var body = request.Content is null
                 ? string.Empty
                 : await request.Content.ReadAsStringAsync(ct);
-            _requests.Enqueue(new RecordedRequest(
-                request.Method,
-                request.RequestUri,
-                request.Headers.Authorization?.ToString(),
-                body));
+            _requests.Enqueue(
+                new RecordedRequest(
+                    request.Method,
+                    request.RequestUri,
+                    request.Headers.Authorization?.ToString(),
+                    body
+                )
+            );
 
             return new HttpResponseMessage(HttpStatusCode.OK)
             {
-                Content = new StringContent(responseBody, Encoding.UTF8, "application/json")
+                Content = new StringContent(responseBody, Encoding.UTF8, "application/json"),
             };
         }
     }
@@ -353,5 +401,6 @@ public sealed class ServiceClientServiceCollectionExtensionsTests
         HttpMethod Method,
         Uri? Uri,
         string? Authorization,
-        string Body);
+        string Body
+    );
 }
